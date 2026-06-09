@@ -1,13 +1,14 @@
 import { CanActivate, ExecutionContext, Inject, Injectable } from "@nestjs/common";
-import type { ToolkitOptions } from "../common/interfaces/toolkit-options.interface";
+import type { ToolkitOptions } from '../core/interfaces/toolkit-options.interface';
 import type { StorageDriver } from "../drivers/interfaces/storage.driver";
+import { TOOLKIT_OPTIONS, TOOLKIT_STORAGE_DRIVER } from '../core/tokens';
 
 
 @Injectable()
 export class ErrorRateLimitGuard implements CanActivate {
   constructor(
-    @Inject('TOOLKIT_OPTIONS') private options: ToolkitOptions,
-    @Inject('TOOLKIT_STORAGE_DRIVER') private storage: StorageDriver,
+    @Inject(TOOLKIT_OPTIONS) private options: ToolkitOptions,
+    @Inject(TOOLKIT_STORAGE_DRIVER) private storage: StorageDriver,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

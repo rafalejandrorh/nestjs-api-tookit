@@ -1,9 +1,10 @@
 import { Injectable, Inject } from '@nestjs/common';
 import type { StorageDriver } from "../drivers/interfaces/storage.driver";
+import { TOOLKIT_STORAGE_DRIVER } from '../core/tokens';
 
 @Injectable()
 export class CacheService {
-  constructor(@Inject('TOOLKIT_STORAGE_DRIVER') private storage: StorageDriver) {}
+  constructor(@Inject(TOOLKIT_STORAGE_DRIVER) private storage: StorageDriver) {}
 
   async get<T>(key: string): Promise<T | null> {
     const data = await this.storage.get(key);

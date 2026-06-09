@@ -1,13 +1,14 @@
 import { Injectable, NestMiddleware, Inject } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import type { ToolkitOptions } from "../common/interfaces/toolkit-options.interface";
+import type { ToolkitOptions } from '../core/interfaces/toolkit-options.interface';
 import type { AuditLogPayload, AuditRepository } from '../audit/interfaces/audit-repository.interface';
+import { TOOLKIT_AUDIT_REPOSITORY, TOOLKIT_OPTIONS } from '../core/tokens';
 
 @Injectable()
 export class AuditMiddleware implements NestMiddleware {
   constructor(
-    @Inject('TOOLKIT_OPTIONS') private options: ToolkitOptions,
-    @Inject('TOOLKIT_AUDIT_REPOSITORY') private auditRepo: AuditRepository,
+    @Inject(TOOLKIT_OPTIONS) private options: ToolkitOptions,
+    @Inject(TOOLKIT_AUDIT_REPOSITORY) private auditRepo: AuditRepository,
   ) {}
 
   use(req: Request, res: Response, next: NextFunction) {

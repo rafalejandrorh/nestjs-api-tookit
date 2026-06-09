@@ -1,10 +1,11 @@
 import * as crypto from 'crypto';
 import { Injectable, CanActivate, ExecutionContext, Inject } from '@nestjs/common';
-import type { ToolkitOptions } from "../common/interfaces/toolkit-options.interface";
+import type { ToolkitOptions } from '../core/interfaces/toolkit-options.interface';
+import { TOOLKIT_OPTIONS } from '../core/tokens';
 
 @Injectable()
 export class HmacGuard implements CanActivate {
-  constructor(@Inject('TOOLKIT_OPTIONS') private options: ToolkitOptions) {}
+  constructor(@Inject(TOOLKIT_OPTIONS) private options: ToolkitOptions) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     if (!this.options.hmac?.enabled) {
