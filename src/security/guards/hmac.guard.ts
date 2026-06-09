@@ -18,6 +18,10 @@ export class HmacGuard implements CanActivate {
     }
 
     const signature = request.headers['x-hmac-signature'];
+    if (typeof signature !== 'string' || signature.length === 0) {
+      throw new UnauthorizedException('Missing HMAC signature');
+    }
+
     const payload = JSON.stringify(request.body); // O la data que uses para firmar
     const expectedSignature = crypto
       .createHmac('sha256', this.options.hmac.secretKey)

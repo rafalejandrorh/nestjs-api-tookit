@@ -76,4 +76,40 @@ describe('HmacGuard', () => {
       ),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it('throws UnauthorizedException when the signature header is missing', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      hmac: { enabled: true, secretKey: 'secret' },
+    };
+    const guard = new HmacGuard(options);
+
+    await expect(
+      guard.canActivate(
+        createExecutionContext({
+          path: '/api/orders',
+          headers: {},
+          body: { orderId: 42 },
+        }),
+      ),
+    ).rejects.toMatchObject({ message: 'Missing HMAC signature' });
+  });
+
+  it('throws UnauthorizedException when the signature header is not a string', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      hmac: { enabled: true, secretKey: 'secret' },
+    };
+    const guard = new HmacGuard(options);
+
+    await expect(
+      guard.canActivate(
+        createExecutionContext({
+          path: '/api/orders',
+          headers: { 'x-hmac-signature': ['invalid'] },
+          body: { orderId: 42 },
+        }),
+      ),
+    ).rejects.toMatchObject({ message: 'Missing HMAC signature' });
+  });
 });
