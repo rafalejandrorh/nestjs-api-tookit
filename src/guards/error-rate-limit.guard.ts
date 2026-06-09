@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import type { ToolkitOptions } from '../core/interfaces/toolkit-options.interface';
-import type { StorageDriver } from "../drivers/interfaces/storage.driver";
+import type { StorageDriver } from '../storage/interfaces/storage.driver';
 import { TOOLKIT_OPTIONS, TOOLKIT_STORAGE_DRIVER } from '../core/tokens';
 import { matchesToolkitRoute } from '../core/utils/route-match.util';
 

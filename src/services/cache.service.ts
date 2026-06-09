@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import type { StorageDriver } from "../drivers/interfaces/storage.driver";
+import type { StorageDriver } from '../storage/interfaces/storage.driver';
 import { TOOLKIT_STORAGE_DRIVER } from '../core/tokens';
 
 @Injectable()

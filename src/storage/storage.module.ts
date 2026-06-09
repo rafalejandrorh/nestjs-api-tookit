@@ -2,7 +2,7 @@ import { DynamicModule, InternalServerErrorException, Module } from '@nestjs/com
 import { RedisModule, RedisService } from '@liaoliaots/nestjs-redis';
 import type { ToolkitOptions } from '../core/interfaces/toolkit-options.interface';
 import { TOOLKIT_STORAGE_DRIVER } from '../core/tokens';
-import { RedisStorageDriver, MemoryStorageDriver } from '../drivers/cache';
+import { RedisStorageDriver, MemoryStorageDriver } from './drivers';
 
 @Module({})
 export class StorageModule {
