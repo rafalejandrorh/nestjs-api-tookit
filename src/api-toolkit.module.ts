@@ -22,7 +22,14 @@ export class ApiToolkitModule {
         { provide: TOOLKIT_OPTIONS, useValue: options },
         // Aquí registraremos los Guards e Interceptors
       ],
-      exports: [TOOLKIT_OPTIONS, TOOLKIT_STORAGE_DRIVER, CacheModule, SecurityModule], // Exportamos para que otros servicios lo lean si es necesario
+      exports: [
+        TOOLKIT_OPTIONS,
+        TOOLKIT_STORAGE_DRIVER,
+        StorageModule,
+        AuditModule,
+        CacheModule,
+        SecurityModule,
+      ],
     };
   }
 }
