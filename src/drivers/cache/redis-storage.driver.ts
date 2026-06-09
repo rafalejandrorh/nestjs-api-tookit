@@ -1,13 +1,19 @@
-// redis-storage.driver.ts
 import { StorageDriver } from '../interfaces/storage.driver';
-import { Redis } from 'ioredis'; // o la librería que prefieras
+
+type RedisMulti = {
+  incr(key: string): RedisMulti;
+  expire(key: string, seconds: number): RedisMulti;
+  exec(): Promise<Array<[Error | null, unknown]> | null>;
+};
+
+type RedisLikeClient = {
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string, ...args: unknown[]): Promise<unknown>;
+  multi(): RedisMulti;
+};
 
 export class RedisStorageDriver implements StorageDriver {
-  private client: Redis;
-
-  constructor(config: any) {
-    this.client = new Redis(config);
-  }
+  constructor(private readonly client: RedisLikeClient) {}
 
   async get(key: string): Promise<string | null> {
     return this.client.get(key);

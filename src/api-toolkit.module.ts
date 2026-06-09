@@ -1,4 +1,5 @@
 import { DynamicModule, Module, Global, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { RedisModule, RedisService } from '@liaoliaots/nestjs-redis';
 import { ToolkitOptions } from './common/interfaces/toolkit-options.interface';
 import { RedisStorageDriver, MemoryStorageDriver } from './drivers/cache';
 import { CacheService } from './services';
@@ -10,18 +11,37 @@ import { AuditMiddleware } from './middlewares/audit.middleware';
 export class ApiToolkitModule {
   static forRoot(options: ToolkitOptions): DynamicModule {
 
+    const redisConfig = options.storage.type === 'redis' ? options.storage.config : undefined;
+    const redisImports =
+      options.storage.type === 'redis'
+        ? [RedisModule.forRoot({ config: redisConfig })]
+        : [];
+
     // Proveedor dinámico para el almacenamiento
     const storageProvider = {
       provide: 'TOOLKIT_STORAGE_DRIVER',
-      useFactory: () => {
+      useFactory: (redisService?: RedisService) => {
         switch (options.storage.type) {
-          case 'redis':
-            return new RedisStorageDriver(options.storage.config);
+          case 'redis': {
+            const namespace = Array.isArray(redisConfig)
+              ? redisConfig[0]?.namespace
+              : redisConfig?.namespace;
+            const client = namespace
+              ? redisService?.getOrThrow(namespace)
+              : redisService?.getOrThrow();
+
+            if (!client) {
+              throw new Error('RedisService no disponible para storage redis');
+            }
+
+            return new RedisStorageDriver(client);
+          }
           case 'memory':
           default:
             return new MemoryStorageDriver(); 
         }
       },
+      inject: options.storage.type === 'redis' ? [RedisService] : [],
     };
 
     const auditDbProvider = {
@@ -36,6 +56,7 @@ export class ApiToolkitModule {
 
     return {
       module: ApiToolkitModule,
+      imports: [...redisImports],
       providers: [
         { provide: 'TOOLKIT_OPTIONS', useValue: options },
         storageProvider,

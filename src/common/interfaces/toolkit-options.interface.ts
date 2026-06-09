@@ -1,13 +1,21 @@
 // toolkit-options.interface.ts
+import type { RedisClientOptions } from '@liaoliaots/nestjs-redis';
+
+type RedisStorageConfig = RedisClientOptions | RedisClientOptions[];
+
 export interface ToolkitOptions {
   globalMatch?: {
     include: (string | RegExp)[]; // Ej: ['/api/v1/.*', '/auth/.*']
     exclude?: (string | RegExp)[]; // Ej: ['/api/v1/public/.*']
   };
-  storage: {
-    type: 'redis' | 'memory' | 'filesystem';
-    config?: any; // Credenciales de Redis, rutas de carpetas, etc.
-  };
+  storage:
+    | { type: 'redis';
+        config?: RedisStorageConfig;
+      }
+    | {
+        type: 'memory' | 'filesystem';
+        config?: Record<string, unknown>;
+      };
   oauth?: {
     enabled: boolean;
     // URL del authorization server, scopes, etc.
