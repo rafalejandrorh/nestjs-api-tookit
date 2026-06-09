@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import type { ToolkitOptions } from '../core/interfaces/toolkit-options.interface';
 import type { AuditLogPayload, AuditRepository } from '../audit/interfaces/audit-repository.interface';
 import { TOOLKIT_AUDIT_REPOSITORY, TOOLKIT_OPTIONS } from '../core/tokens';
+import { matchesToolkitRoute } from '../core/utils/route-match.util';
 
 @Injectable()
 export class AuditMiddleware implements NestMiddleware {
@@ -13,6 +14,10 @@ export class AuditMiddleware implements NestMiddleware {
 
   use(req: Request, res: Response, next: NextFunction) {
     if (!this.options.audit?.enabled) {
+      return next();
+    }
+
+    if (!matchesToolkitRoute(req.path, this.options.globalMatch)) {
       return next();
     }
 
