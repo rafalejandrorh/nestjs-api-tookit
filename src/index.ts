@@ -1,6 +1,10 @@
 // Exportar el módulo dinámico principal
 export * from './api-toolkit.module';
 
+// Exportar módulos internos reutilizables
+export * from './cache/cache.module';
+export * from './security/security.module';
+
 // Exportar los servicios que la app pueda necesitar inyectar
 export * from './services/cache.service';
 
