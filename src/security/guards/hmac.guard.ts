@@ -1,8 +1,8 @@
 import * as crypto from 'crypto';
 import { Injectable, CanActivate, ExecutionContext, Inject, UnauthorizedException } from '@nestjs/common';
-import type { ToolkitOptions } from '../core/interfaces/toolkit-options.interface';
-import { TOOLKIT_OPTIONS } from '../core/tokens';
-import { matchesToolkitRoute } from '../core/utils/route-match.util';
+import type { ToolkitOptions } from '../../core/interfaces/toolkit-options.interface';
+import { TOOLKIT_OPTIONS } from '../../core/tokens';
+import { matchesToolkitRoute } from '../../core/utils/route-match.util';
 
 @Injectable()
 export class HmacGuard implements CanActivate {

@@ -1,9 +1,9 @@
 import { Injectable, NestMiddleware, Inject } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import type { ToolkitOptions } from '../core/interfaces/toolkit-options.interface';
-import type { AuditLogPayload, AuditRepository } from '../audit/interfaces/audit-repository.interface';
-import { TOOLKIT_AUDIT_REPOSITORY, TOOLKIT_OPTIONS } from '../core/tokens';
-import { matchesToolkitRoute } from '../core/utils/route-match.util';
+import type { ToolkitOptions } from '../../core/interfaces/toolkit-options.interface';
+import type { AuditLogPayload, AuditRepository } from '../interfaces/audit-repository.interface';
+import { TOOLKIT_AUDIT_REPOSITORY, TOOLKIT_OPTIONS } from '../../core/tokens';
+import { matchesToolkitRoute } from '../../core/utils/route-match.util';
 
 @Injectable()
 export class AuditMiddleware implements NestMiddleware {
@@ -22,7 +22,7 @@ export class AuditMiddleware implements NestMiddleware {
     }
 
     const start = Date.now();
-    
+
     // Interceptar el body de la respuesta es truculento en Express/Nest.
     // Sobrescribimos temporalmente res.send para capturar el payload.
     const originalSend = res.send;
