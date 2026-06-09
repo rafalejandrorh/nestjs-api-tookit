@@ -97,6 +97,44 @@ describe('AuditMiddleware', () => {
     );
   });
 
+  it('redacts sensitive fields from the request body before persisting', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      audit: { enabled: true, repository: 'sql' },
+    };
+    const auditRepo: AuditRepository = { saveLog: jest.fn().mockResolvedValue(undefined) };
+    const middleware = new AuditMiddleware(options, auditRepo);
+    const next = createNext();
+    const { response, listeners } = createResponse();
+    const request = createRequest({
+      body: {
+        email: 'user@example.com',
+        password: 'plain-secret',
+        nested: {
+          token: 'abc123',
+          profile: { name: 'Rafael' },
+        },
+      },
+    });
+
+    middleware.use(request, response, next);
+    response.send(JSON.stringify({ ok: true }));
+    await listeners.finish();
+
+    expect(auditRepo.saveLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestBody: {
+          email: 'user@example.com',
+          password: '[REDACTED]',
+          nested: {
+            token: '[REDACTED]',
+            profile: { name: 'Rafael' },
+          },
+        },
+      }),
+    );
+  });
+
   it('captures repository write errors without throwing', async () => {
     const options: ToolkitOptions = {
       storage: { type: 'memory' },

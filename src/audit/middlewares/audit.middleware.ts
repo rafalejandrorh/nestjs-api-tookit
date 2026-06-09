@@ -5,6 +5,42 @@ import type { AuditLogPayload, AuditRepository } from '../interfaces/audit-repos
 import { TOOLKIT_AUDIT_REPOSITORY, TOOLKIT_OPTIONS } from '../../core/tokens';
 import { matchesToolkitRoute } from '../../core/utils/route-match.util';
 
+const SENSITIVE_AUDIT_KEYS = new Set([
+  'password',
+  'passwd',
+  'pwd',
+  'token',
+  'access_token',
+  'refresh_token',
+  'secret',
+  'client_secret',
+  'authorization',
+  'cookie',
+  'apikey',
+  'api_key',
+]);
+
+function sanitizeRequestBody(body: unknown): unknown {
+  if (Array.isArray(body)) {
+    return body.map(item => sanitizeRequestBody(item));
+  }
+
+  if (!body || typeof body !== 'object') {
+    return body;
+  }
+
+  return Object.fromEntries(
+    Object.entries(body).map(([key, value]) => {
+      const normalizedKey = key.toLowerCase();
+      if (SENSITIVE_AUDIT_KEYS.has(normalizedKey)) {
+        return [key, '[REDACTED]'];
+      }
+
+      return [key, sanitizeRequestBody(value)];
+    }),
+  );
+}
+
 function parseResponseBody(body: unknown): unknown {
   if (body == null) {
     return null;
@@ -56,7 +92,7 @@ export class AuditMiddleware implements NestMiddleware {
         method: req.method,
         url: req.originalUrl,
         ip: req.ip,
-        requestBody: req.body, // Asegúrate de censurar passwords/tokens aquí
+        requestBody: sanitizeRequestBody(req.body),
         responseStatusCode: res.statusCode,
         responseBody: parseResponseBody(responseBody),
         durationMs,
