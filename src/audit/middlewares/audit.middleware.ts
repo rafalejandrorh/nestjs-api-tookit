@@ -5,6 +5,22 @@ import type { AuditLogPayload, AuditRepository } from '../interfaces/audit-repos
 import { TOOLKIT_AUDIT_REPOSITORY, TOOLKIT_OPTIONS } from '../../core/tokens';
 import { matchesToolkitRoute } from '../../core/utils/route-match.util';
 
+function parseResponseBody(body: unknown): unknown {
+  if (body == null) {
+    return null;
+  }
+
+  if (typeof body !== 'string') {
+    return body;
+  }
+
+  try {
+    return JSON.parse(body);
+  } catch {
+    return body;
+  }
+}
+
 @Injectable()
 export class AuditMiddleware implements NestMiddleware {
   constructor(
@@ -42,7 +58,7 @@ export class AuditMiddleware implements NestMiddleware {
         ip: req.ip,
         requestBody: req.body, // Asegúrate de censurar passwords/tokens aquí
         responseStatusCode: res.statusCode,
-        responseBody: responseBody ? JSON.parse(responseBody) : null,
+        responseBody: parseResponseBody(responseBody),
         durationMs,
         timestamp: new Date(),
       };

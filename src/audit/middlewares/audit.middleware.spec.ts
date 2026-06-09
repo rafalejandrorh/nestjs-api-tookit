@@ -35,6 +35,10 @@ describe('AuditMiddleware', () => {
     jest.restoreAllMocks();
   });
 
+  function createNext(): jest.MockedFunction<NextFunction> {
+    return jest.fn() as jest.MockedFunction<NextFunction>;
+  }
+
   it('calls next immediately when audit is disabled', () => {
     const options: ToolkitOptions = {
       storage: { type: 'memory' },
@@ -42,7 +46,7 @@ describe('AuditMiddleware', () => {
     };
     const auditRepo: AuditRepository = { saveLog: jest.fn() };
     const middleware = new AuditMiddleware(options, auditRepo);
-    const next = jest.fn<ReturnType<NextFunction>, Parameters<NextFunction>>();
+    const next = createNext();
 
     middleware.use(createRequest(), createResponse().response, next);
 
@@ -58,7 +62,7 @@ describe('AuditMiddleware', () => {
     };
     const auditRepo: AuditRepository = { saveLog: jest.fn() };
     const middleware = new AuditMiddleware(options, auditRepo);
-    const next = jest.fn<ReturnType<NextFunction>, Parameters<NextFunction>>();
+    const next = createNext();
 
     middleware.use(createRequest({ path: '/health', originalUrl: '/health' }), createResponse().response, next);
 
@@ -73,7 +77,7 @@ describe('AuditMiddleware', () => {
     };
     const auditRepo: AuditRepository = { saveLog: jest.fn().mockResolvedValue(undefined) };
     const middleware = new AuditMiddleware(options, auditRepo);
-    const next = jest.fn<ReturnType<NextFunction>, Parameters<NextFunction>>();
+    const next = createNext();
     const { response, listeners } = createResponse();
 
     middleware.use(createRequest(), response, next);
@@ -100,7 +104,7 @@ describe('AuditMiddleware', () => {
     };
     const auditRepo: AuditRepository = { saveLog: jest.fn().mockRejectedValue(new Error('db down')) };
     const middleware = new AuditMiddleware(options, auditRepo);
-    const next = jest.fn<ReturnType<NextFunction>, Parameters<NextFunction>>();
+    const next = createNext();
     const { response, listeners } = createResponse();
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
@@ -111,5 +115,47 @@ describe('AuditMiddleware', () => {
 
     expect(consoleErrorSpy).toHaveBeenCalledWith('Error saving audit log', expect.any(Error));
     expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('stores plain string responses without throwing on invalid JSON', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      audit: { enabled: true, repository: 'sql' },
+    };
+    const auditRepo: AuditRepository = { saveLog: jest.fn().mockResolvedValue(undefined) };
+    const middleware = new AuditMiddleware(options, auditRepo);
+    const next = createNext();
+    const { response, listeners } = createResponse();
+
+    middleware.use(createRequest(), response, next);
+    response.send('ok');
+    await listeners.finish();
+
+    expect(auditRepo.saveLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        responseBody: 'ok',
+      }),
+    );
+  });
+
+  it('stores non-string response bodies as-is', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      audit: { enabled: true, repository: 'sql' },
+    };
+    const auditRepo: AuditRepository = { saveLog: jest.fn().mockResolvedValue(undefined) };
+    const middleware = new AuditMiddleware(options, auditRepo);
+    const next = createNext();
+    const { response, listeners } = createResponse();
+
+    middleware.use(createRequest(), response, next);
+    response.send({ ok: true });
+    await listeners.finish();
+
+    expect(auditRepo.saveLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        responseBody: { ok: true },
+      }),
+    );
   });
 });
