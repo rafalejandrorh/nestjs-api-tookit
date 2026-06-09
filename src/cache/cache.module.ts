@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { CacheService } from '../services';
+import { CacheService } from './services';
 
 @Module({
   providers: [CacheService],
