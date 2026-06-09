@@ -1,15 +1,15 @@
-// toolkit-options.interface.ts
 import type { RedisClientOptions } from '@liaoliaots/nestjs-redis';
 
 type RedisStorageConfig = RedisClientOptions | RedisClientOptions[];
 
 export interface ToolkitOptions {
   globalMatch?: {
-    include: (string | RegExp)[]; // Ej: ['/api/v1/.*', '/auth/.*']
-    exclude?: (string | RegExp)[]; // Ej: ['/api/v1/public/.*']
+    include: (string | RegExp)[];
+    exclude?: (string | RegExp)[];
   };
   storage:
-    | { type: 'redis';
+    | {
+        type: 'redis';
         config?: RedisStorageConfig;
       }
     | {
@@ -18,7 +18,6 @@ export interface ToolkitOptions {
       };
   oauth?: {
     enabled: boolean;
-    // URL del authorization server, scopes, etc.
   };
   hmac?: {
     enabled: boolean;
@@ -33,7 +32,7 @@ export interface ToolkitOptions {
     enabled: boolean;
     repository: 'sql' | 'nosql';
     config?: {
-      connection: string; // Configuración de conexión para la base de datos
-    }; // Configuración específica para cada tipo de repositorio
+      connection: string;
+    };
   };
 }
