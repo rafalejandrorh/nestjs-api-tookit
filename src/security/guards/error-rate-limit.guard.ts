@@ -4,6 +4,19 @@ import type { StorageDriver } from '../../storage/interfaces/storage.driver';
 import { TOOLKIT_OPTIONS, TOOLKIT_STORAGE_DRIVER } from '../../core/tokens';
 import { matchesToolkitRoute } from '../../core/utils/route-match.util';
 
+function parseStoredErrorCount(value: string | null): number | null {
+  if (value == null) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
 @Injectable()
 export class ErrorRateLimitGuard implements CanActivate {
   constructor(
@@ -22,9 +35,9 @@ export class ErrorRateLimitGuard implements CanActivate {
 
     const ip = request.ip;
     const key = `rate-limit:errors:${ip}`;
-    const currentErrors = await this.storage.get(key);
+    const currentErrors = parseStoredErrorCount(await this.storage.get(key));
 
-    if (currentErrors && parseInt(currentErrors, 10) >= this.options.errorRateLimit.maxErrors) {
+    if (currentErrors != null && currentErrors >= this.options.errorRateLimit.maxErrors) {
       throw new HttpException('Too many failed requests', HttpStatus.TOO_MANY_REQUESTS);
     }
     return true;

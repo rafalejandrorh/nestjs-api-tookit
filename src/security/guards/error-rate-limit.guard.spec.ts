@@ -69,9 +69,33 @@ describe('ErrorRateLimitGuard', () => {
 
     await expect(
       guard.canActivate(createExecutionContext({ path: '/api/orders', ip: '127.0.0.1' })),
-    ).rejects.toMatchObject<HttpException>({
+    ).rejects.toMatchObject({
       message: 'Too many failed requests',
       status: HttpStatus.TOO_MANY_REQUESTS,
     });
+  });
+
+  it('ignores non-numeric stored counters and allows the request', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      errorRateLimit: { enabled: true, maxErrors: 3, windowMs: 60000 },
+    };
+    const guard = new ErrorRateLimitGuard(options, createStorageDriver('not-a-number'));
+
+    await expect(
+      guard.canActivate(createExecutionContext({ path: '/api/orders', ip: '127.0.0.1' })),
+    ).resolves.toBe(true);
+  });
+
+  it('ignores negative stored counters and allows the request', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      errorRateLimit: { enabled: true, maxErrors: 3, windowMs: 60000 },
+    };
+    const guard = new ErrorRateLimitGuard(options, createStorageDriver('-1'));
+
+    await expect(
+      guard.canActivate(createExecutionContext({ path: '/api/orders', ip: '127.0.0.1' })),
+    ).resolves.toBe(true);
   });
 });
