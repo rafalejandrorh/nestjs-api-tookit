@@ -26,6 +26,14 @@ describe('CacheService', () => {
     await expect(service.get<{ orderId: number }>('orders')).resolves.toEqual({ orderId: 42 });
   });
 
+  it('throws a stable error when the cached payload is invalid JSON', async () => {
+    const storage = createStorageDriver();
+    storage.get.mockResolvedValue('not-json');
+    const service = new CacheService(storage);
+
+    await expect(service.get('orders')).rejects.toThrow('Invalid cached JSON payload');
+  });
+
   it('serializes values before writing them to storage', async () => {
     const storage = createStorageDriver();
     const service = new CacheService(storage);
