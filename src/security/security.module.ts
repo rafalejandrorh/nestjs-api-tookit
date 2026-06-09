@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ErrorRateLimitGuard, HmacGuard } from '../guards';
+import { ErrorRateLimitGuard, HmacGuard } from './guards';
 
 @Module({
   providers: [HmacGuard, ErrorRateLimitGuard],

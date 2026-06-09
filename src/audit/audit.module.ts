@@ -2,7 +2,7 @@ import { DynamicModule, MiddlewareConsumer, Module, NestModule, RequestMethod } 
 import type { ToolkitOptions } from '../core/interfaces/toolkit-options.interface';
 import { TOOLKIT_AUDIT_REPOSITORY, TOOLKIT_OPTIONS } from '../core/tokens';
 import { NoSqlAuditRepository, SqlAuditRepository } from './repository';
-import { AuditMiddleware } from '../middlewares/audit.middleware';
+import { AuditMiddleware } from './middlewares/audit.middleware';
 
 @Module({})
 export class AuditModule implements NestModule {
