@@ -1,14 +1,15 @@
-import { DynamicModule, Module, Global, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { DynamicModule, Module, Global, MiddlewareConsumer, RequestMethod, NestModule } from '@nestjs/common';
 import { RedisModule, RedisService } from '@liaoliaots/nestjs-redis';
-import { ToolkitOptions } from './common/interfaces/toolkit-options.interface';
+import type { ToolkitOptions } from './core/interfaces/toolkit-options.interface';
 import { RedisStorageDriver, MemoryStorageDriver } from './drivers/cache';
 import { CacheService } from './services';
 import { NoSqlAuditRepository, SqlAuditRepository } from './audit/repository';
 import { AuditMiddleware } from './middlewares/audit.middleware';
+import { TOOLKIT_AUDIT_REPOSITORY, TOOLKIT_OPTIONS, TOOLKIT_STORAGE_DRIVER } from './core/tokens';
 
 @Global()
 @Module({})
-export class ApiToolkitModule {
+export class ApiToolkitModule implements NestModule {
   static forRoot(options: ToolkitOptions): DynamicModule {
 
     const redisConfig = options.storage.type === 'redis' ? options.storage.config : undefined;
@@ -19,7 +20,7 @@ export class ApiToolkitModule {
 
     // Proveedor dinámico para el almacenamiento
     const storageProvider = {
-      provide: 'TOOLKIT_STORAGE_DRIVER',
+      provide: TOOLKIT_STORAGE_DRIVER,
       useFactory: (redisService?: RedisService) => {
         switch (options.storage.type) {
           case 'redis': {
@@ -45,7 +46,7 @@ export class ApiToolkitModule {
     };
 
     const auditDbProvider = {
-      provide: 'TOOLKIT_AUDIT_REPOSITORY',
+      provide: TOOLKIT_AUDIT_REPOSITORY,
       useFactory: () => {
         if (options.audit?.repository === 'nosql') {
           return new NoSqlAuditRepository(options.audit?.config?.connection);
@@ -58,13 +59,14 @@ export class ApiToolkitModule {
       module: ApiToolkitModule,
       imports: [...redisImports],
       providers: [
-        { provide: 'TOOLKIT_OPTIONS', useValue: options },
+        { provide: TOOLKIT_OPTIONS, useValue: options },
         storageProvider,
         auditDbProvider,
         CacheService,
+        AuditMiddleware,
         // Aquí registraremos los Guards e Interceptors
       ],
-      exports: ['TOOLKIT_OPTIONS', 'TOOLKIT_STORAGE_DRIVER', CacheService], // Exportamos para que otros servicios lo lean si es necesario
+      exports: [TOOLKIT_OPTIONS, TOOLKIT_STORAGE_DRIVER, CacheService], // Exportamos para que otros servicios lo lean si es necesario
     };
   }
 
