@@ -190,10 +190,11 @@ describe('AuditMiddleware', () => {
     const middleware = new AuditMiddleware(options, auditRepo);
     const next = createNext();
     const { response, listeners } = createResponse();
+    const requestBody = {
+      'x-api-key': 'secret-key',
+    };
     const request = createRequest({
-      body: {
-        'x-api-key': 'secret-key',
-      },
+      body: requestBody,
     });
 
     middleware.use(request, response, next);
@@ -202,9 +203,7 @@ describe('AuditMiddleware', () => {
 
     expect(auditRepo.saveLog).toHaveBeenCalledWith(
       expect.objectContaining({
-        requestBody: {
-          'x-api-key': '[REDACTED]',
-        },
+        requestBody: { 'x-api-key': '[REDACTED]' },
       }),
     );
   });
