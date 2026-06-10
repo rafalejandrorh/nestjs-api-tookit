@@ -187,6 +187,8 @@ ApiToolkitModule.forRoot({
   hmac: {
     enabled: true,
     secretKey: process.env.HMAC_SECRET ?? 'change-me',
+    timestampTolerance: 100,
+    requestAttributeName: 'authenticated_hmac',
   },
 });
 ```
@@ -213,13 +215,23 @@ Firma esperada por el guard actual:
 import * as crypto from 'crypto';
 
 const body = { orderId: 42 };
-const signature = crypto
-  .createHmac('sha256', process.env.HMAC_SECRET ?? 'change-me')
-  .update(JSON.stringify(body))
-  .digest('hex');
+const timestamp = `${Math.floor(Date.now() / 1000)}`;
+const bodyHash = crypto.createHash('sha256').update(JSON.stringify(body)).digest('hex');
+const message = `POST|/api/secure/orders|${bodyHash}|${timestamp}`;
+const signature = crypto.createHmac('sha256', process.env.HMAC_SECRET ?? 'change-me').update(message).digest('base64');
 ```
 
-El cliente debe enviar esa firma en el header `x-hmac-signature`.
+El cliente debe enviar:
+
+- `x-timestamp`: epoch en segundos.
+- `x-signature`: firma Base64 del mensaje `METHOD|URI|SHA256(body)|timestamp`.
+
+Notas:
+
+- El guard usa `rawBody` si está disponible; si no, cae en `JSON.stringify(body)`.
+- Si el timestamp cae fuera de `timestampTolerance`, la request se rechaza.
+- El guard deja metadatos de validación en `request[requestAttributeName]`.
+- A diferencia del bundle Symfony, esta versión Nest valida contra un `secretKey` configurado y no resuelve todavía un secreto distinto por OAuth client autenticado.
 
 ## Configuración Error Rate Limit
 
