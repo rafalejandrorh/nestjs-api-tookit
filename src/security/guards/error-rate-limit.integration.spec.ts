@@ -56,6 +56,7 @@ async function createApp(options: ToolkitOptions, state: StorageState): Promise<
   }).compile();
 
   const app = moduleRef.createNestApplication();
+  app.set('trust proxy', true);
   await app.init();
   return app;
 }
@@ -138,18 +139,27 @@ describe('ErrorRateLimitGuard integration', () => {
   });
 
   it('increments attempts on 404 at runtime and bans on the next guarded request', async () => {
+    const forwardedIp = '203.0.113.10';
+    const state: StorageState = {};
     app = await createApp(
       {
         storage: { type: 'memory' },
         globalMatch: { include: ['^/api/'] },
         errorRateLimit: { enabled: true, maxErrors: 0, windowMs: 60000 },
       },
-      {},
+      state,
     );
 
-    await request(app.getHttpServer()).get('/api/missing-route').expect(404);
+    await request(app.getHttpServer())
+      .get('/api/missing-route')
+      .set('x-forwarded-for', forwardedIp)
+      .expect(404);
+    expect(state[`ip_404_attempts_${forwardedIp}`]).toBe('1');
 
-    const response = await request(app.getHttpServer()).get('/api/rate-limit-test').expect(403);
+    const response = await request(app.getHttpServer())
+      .get('/api/rate-limit-test')
+      .set('x-forwarded-for', forwardedIp)
+      .expect(403);
     expect(response.body).toEqual(
       expect.objectContaining({
         statusCode: 403,
