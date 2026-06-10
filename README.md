@@ -77,7 +77,7 @@ El toolkit expone `POST /oauth/token` con soporte de:
 - `grant_type=client_credentials`
 - `grant_type=password`
 
-Configuración:
+Configuración con SQL:
 
 ```ts
 ApiToolkitModule.forRoot({
@@ -98,6 +98,26 @@ ApiToolkitModule.forRoot({
 });
 ```
 
+Configuración con MongoDB/Mongoose:
+
+```ts
+ApiToolkitModule.forRoot({
+  storage: { type: 'memory' },
+  oauth: {
+    enabled: true,
+    repository: 'nosql',
+    jwtSecret: process.env.JWT_SECRET,
+    jwtIssuer: 'my-api',
+    jwtAlgorithm: 'HS256',
+    accessTokenExpiresIn: '1h',
+    config: {
+      connection: process.env.MONGODB_URI,
+      collection: 'oauth_clients',
+    },
+  },
+});
+```
+
 Repositorios OAuth soportados:
 
 - `oauth.repository: 'sql'`: busca clientes en DB SQL vía TypeORM.
@@ -105,6 +125,12 @@ Repositorios OAuth soportados:
 - `oauth.repository: 'options'` (default): compatibilidad legacy leyendo `oauth.clients` del config.
 
 Si usas `sql` o `nosql`, `oauth.config.connection` es obligatorio.
+
+Notas:
+
+- Usa `oauth.repository: 'sql'` si ya gestionas clientes OAuth en una tabla relacional como `oauth_clients`.
+- Usa `oauth.repository: 'nosql'` si prefieres almacenar clientes OAuth en una colección MongoDB.
+- `oauth.repository: 'options'` sigue siendo útil para pruebas rápidas o entornos muy simples, pero para producción la opción recomendada es persistirlos en BD.
 
 Ejemplo `client_credentials`:
 
