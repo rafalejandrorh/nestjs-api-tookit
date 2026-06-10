@@ -187,6 +187,7 @@ ApiToolkitModule.forRoot({
   hmac: {
     enabled: true,
     secretKey: process.env.HMAC_SECRET ?? 'change-me',
+    protectedPathPrefix: '/api/secure',
     timestampTolerance: 100,
     requestAttributeName: 'authenticated_hmac',
   },
@@ -228,6 +229,8 @@ El cliente debe enviar:
 
 Notas:
 
+- Si `protectedPathPrefix` está definido, el guard solo se aplica a rutas que empiecen por ese prefijo.
+- `globalMatch` puede seguir acotando aún más las rutas protegidas si también está configurado.
 - El guard usa `rawBody` si está disponible; si no, cae en `JSON.stringify(body)`.
 - Si el timestamp cae fuera de `timestampTolerance`, la request se rechaza.
 - El guard deja metadatos de validación en `request[requestAttributeName]`.
