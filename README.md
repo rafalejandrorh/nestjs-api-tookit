@@ -343,6 +343,53 @@ Nota operativa importante:
 - Al superar el umbral, se crea el ban temporal (`banned_ip_<ip>`) y se resetea `ip_404_attempts_<ip>`.
 - `maxErrors/windowMs` siguen soportados como compatibilidad hacia atrás cuando no se define `maxAttempts404/banDurationMs`.
 
+## Comandos Disponibles
+
+Scripts del paquete:
+
+```bash
+yarn build
+yarn test
+yarn test:cov
+yarn lint
+```
+
+Comandos CLI OAuth (nest-commander):
+
+```bash
+yarn ts-node -r tsconfig-paths/register src/main.ts toolkit:oauth-client:generate
+yarn ts-node -r tsconfig-paths/register src/main.ts toolkit:oauth-client:find <clientId>
+```
+
+`toolkit:oauth-client:generate`:
+
+- genera `clientId` y `clientSecret` aleatorios si no se envían.
+- flags disponibles:
+  - `--client-id [clientId]`
+  - `--client-secret [clientSecret]`
+  - `--scopes [scope1,scope2]`
+  - `--username [username]`
+  - `--password [password]`
+
+Ejemplo:
+
+```bash
+yarn ts-node -r tsconfig-paths/register src/main.ts toolkit:oauth-client:generate --scopes read,write --username alice --password alice-password
+```
+
+`toolkit:oauth-client:find <clientId>`:
+
+- busca el cliente en `oauth.clients` de la configuración actual.
+- por defecto redacta `clientSecret`.
+- flag opcional:
+  - `--reveal-secret true`
+
+Ejemplo:
+
+```bash
+yarn ts-node -r tsconfig-paths/register src/main.ts toolkit:oauth-client:find my-client --reveal-secret true
+```
+
 ## Scripts
 
 ```bash
