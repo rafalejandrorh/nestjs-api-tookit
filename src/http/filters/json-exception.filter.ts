@@ -16,17 +16,19 @@ export class JsonExceptionFilter implements ExceptionFilter {
   constructor(@Inject(TOOLKIT_OPTIONS) private readonly options: ToolkitOptions) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
-    const exceptionConfig = this.options.http?.exception;
-    if (exceptionConfig?.enabled === false) {
-      throw exception;
-    }
-
     const ctx = host.switchToHttp();
     const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
+    const exceptionConfig = this.options.http?.exception;
+
+    if (exceptionConfig?.enabled === false) {
+      this.replyWithDefaultHttpPayload(response, exception);
+      return;
+    }
 
     if (!matchesToolkitRoute(request.path, this.options.globalMatch)) {
-      throw exception;
+      this.replyWithDefaultHttpPayload(response, exception);
+      return;
     }
 
     const isHttpException = exception instanceof HttpException;
@@ -43,6 +45,29 @@ export class JsonExceptionFilter implements ExceptionFilter {
     };
 
     response.status(statusCode).json(payload);
+  }
+
+  private replyWithDefaultHttpPayload(response: Response, exception: unknown): void {
+    if (exception instanceof HttpException) {
+      const statusCode = exception.getStatus();
+      const exceptionResponse = exception.getResponse();
+
+      if (typeof exceptionResponse === 'string') {
+        response.status(statusCode).json({
+          statusCode,
+          message: exceptionResponse,
+        });
+        return;
+      }
+
+      response.status(statusCode).json(exceptionResponse);
+      return;
+    }
+
+    response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      message: 'Internal server error',
+    });
   }
 
   private resolveMessage(responseBody: unknown, exception: unknown): string {
