@@ -1,14 +1,15 @@
 import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { timingSafeEqual } from 'crypto';
+import { TOOLKIT_OAUTH_CLIENT_REPOSITORY, TOOLKIT_OPTIONS } from '../core/tokens';
 import type {
   OAuthToolkitClient,
   OAuthToolkitUser,
   ToolkitOptions,
 } from '../core/interfaces/toolkit-options.interface';
-import { TOOLKIT_OPTIONS } from '../core/tokens';
 import type { OAuthTokenRequest } from './interfaces/oauth-token-request.interface';
 import type { OAuthTokenResponse } from './interfaces/oauth-token-response.interface';
+import type { OAuthClientRepository } from './interfaces/oauth-client-repository.interface';
 
 function safeCompare(left: string, right: string): boolean {
   const leftBuffer = Buffer.from(left);
@@ -45,16 +46,18 @@ function parseExpiresInSeconds(value: string | number | undefined): number | und
 export class OAuthService {
   constructor(
     @Inject(TOOLKIT_OPTIONS) private readonly options: ToolkitOptions,
+    @Inject(TOOLKIT_OAUTH_CLIENT_REPOSITORY)
+    private readonly oauthClientRepository: OAuthClientRepository,
     private readonly jwtService: JwtService,
   ) {}
 
-  issueToken(request: OAuthTokenRequest): OAuthTokenResponse {
+  async issueToken(request: OAuthTokenRequest): Promise<OAuthTokenResponse> {
     const grantType = request.grant_type;
     if (grantType !== 'client_credentials' && grantType !== 'password') {
       throw new BadRequestException('Unsupported grant_type');
     }
 
-    const client = this.findClient(request.client_id, request.client_secret);
+    const client = await this.findClient(request.client_id, request.client_secret);
     const scope = this.resolveScope(client, request.scope);
     const expiresIn = this.options.oauth?.accessTokenExpiresIn ?? '1h';
 
@@ -93,14 +96,11 @@ export class OAuthService {
     };
   }
 
-  private findClient(clientId: string, clientSecret: string): OAuthToolkitClient {
-    const clients = this.options.oauth?.clients ?? [];
-    const client = clients.find(item => safeCompare(item.clientId, clientId));
-
+  private async findClient(clientId: string, clientSecret: string): Promise<OAuthToolkitClient> {
+    const client = await this.oauthClientRepository.findByClientId(clientId);
     if (!client || !safeCompare(client.clientSecret, clientSecret)) {
       throw new UnauthorizedException('Invalid client credentials');
     }
-
     return client;
   }
 
