@@ -2,6 +2,19 @@ import type { RedisClientOptions } from '@liaoliaots/nestjs-redis';
 
 type RedisStorageConfig = RedisClientOptions | RedisClientOptions[];
 
+export interface OAuthToolkitUser {
+  username: string;
+  password: string;
+  scopes?: string[];
+}
+
+export interface OAuthToolkitClient {
+  clientId: string;
+  clientSecret: string;
+  scopes?: string[];
+  users?: OAuthToolkitUser[];
+}
+
 export interface ToolkitOptions {
   globalMatch?: {
     include: (string | RegExp)[];
@@ -18,6 +31,11 @@ export interface ToolkitOptions {
       };
   oauth?: {
     enabled: boolean;
+    jwtSecret?: string;
+    jwtIssuer?: string;
+    jwtAlgorithm?: string;
+    accessTokenExpiresIn?: number | string;
+    clients?: OAuthToolkitClient[];
   };
   hmac?: {
     enabled: boolean;
@@ -34,6 +52,7 @@ export interface ToolkitOptions {
     redactFields?: string[];
     config?: {
       connection: string;
+      collection?: string;
     };
   };
 }

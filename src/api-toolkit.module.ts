@@ -5,11 +5,14 @@ import { StorageModule } from './storage/storage.module';
 import { AuditModule } from './audit/audit.module';
 import { CacheModule } from './cache/cache.module';
 import { SecurityModule } from './security/security.module';
+import { OAuthModule } from './oauth/oauth.module';
 
 @Global()
 @Module({})
 export class ApiToolkitModule {
   static forRoot(options: ToolkitOptions): DynamicModule {
+    const oauthImports = options.oauth?.enabled ? [OAuthModule.forRoot(options)] : [];
+
     return {
       module: ApiToolkitModule,
       imports: [
@@ -17,6 +20,7 @@ export class ApiToolkitModule {
         AuditModule.forRoot(options),
         CacheModule,
         SecurityModule,
+        ...oauthImports,
       ],
       providers: [
         { provide: TOOLKIT_OPTIONS, useValue: options },
@@ -29,6 +33,7 @@ export class ApiToolkitModule {
         AuditModule,
         CacheModule,
         SecurityModule,
+        ...oauthImports,
       ],
     };
   }
