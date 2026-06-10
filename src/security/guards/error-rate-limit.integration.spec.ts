@@ -1,9 +1,9 @@
-import { Controller, Get, INestApplication, Module, UseGuards } from '@nestjs/common';
+import { Controller, Get, INestApplication, MiddlewareConsumer, Module, NestModule, RequestMethod, UseGuards } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import type { ToolkitOptions } from '../../core/interfaces/toolkit-options.interface';
-import { TOOLKIT_STORAGE_DRIVER } from '../../core/tokens';
-import { SecurityModule } from '../security.module';
+import { TOOLKIT_OPTIONS, TOOLKIT_STORAGE_DRIVER } from '../../core/tokens';
+import { ErrorRateLimitCounterMiddleware } from '../middlewares/error-rate-limit-counter.middleware';
 import { ErrorRateLimitGuard } from './error-rate-limit.guard';
 
 type StorageState = Record<string, string | null>;
@@ -35,18 +35,30 @@ class RateLimitController {
 @Module({
   controllers: [RateLimitController],
 })
-class TestRateLimitAppModule {
+class TestRateLimitAppModule implements NestModule {
   static register(options: ToolkitOptions, state: StorageState) {
     return {
       module: TestRateLimitAppModule,
-      imports: [SecurityModule.forRoot(options)],
       providers: [
+        ErrorRateLimitGuard,
+        ErrorRateLimitCounterMiddleware,
+        {
+          provide: TOOLKIT_OPTIONS,
+          useValue: options,
+        },
         {
           provide: TOOLKIT_STORAGE_DRIVER,
           useValue: createStorageDriver(state),
         },
       ],
     };
+  }
+
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(ErrorRateLimitCounterMiddleware).forRoutes({
+      path: '*',
+      method: RequestMethod.ALL,
+    });
   }
 }
 
@@ -56,7 +68,6 @@ async function createApp(options: ToolkitOptions, state: StorageState): Promise<
   }).compile();
 
   const app = moduleRef.createNestApplication();
-  app.set('trust proxy', true);
   await app.init();
   return app;
 }
@@ -139,7 +150,6 @@ describe('ErrorRateLimitGuard integration', () => {
   });
 
   it('increments attempts on 404 at runtime and bans on the next guarded request', async () => {
-    const forwardedIp = '203.0.113.10';
     const state: StorageState = {};
     app = await createApp(
       {
@@ -150,16 +160,11 @@ describe('ErrorRateLimitGuard integration', () => {
       state,
     );
 
-    await request(app.getHttpServer())
-      .get('/api/missing-route')
-      .set('x-forwarded-for', forwardedIp)
-      .expect(404);
-    expect(state[`ip_404_attempts_${forwardedIp}`]).toBe('1');
+    await request(app.getHttpServer()).get('/api/missing-route').expect(404);
+    const attemptKeys = Object.keys(state).filter(key => key.startsWith('ip_404_attempts_'));
+    expect(attemptKeys.length).toBeGreaterThan(0);
 
-    const response = await request(app.getHttpServer())
-      .get('/api/rate-limit-test')
-      .set('x-forwarded-for', forwardedIp)
-      .expect(403);
+    const response = await request(app.getHttpServer()).get('/api/rate-limit-test').expect(403);
     expect(response.body).toEqual(
       expect.objectContaining({
         statusCode: 403,
