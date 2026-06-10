@@ -1,9 +1,18 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import type { StringValue } from 'ms';
 import type { ToolkitOptions } from '../core/interfaces/toolkit-options.interface';
 import { OAuthController } from './oauth.controller';
 import { OAuthService } from './oauth.service';
 import { FindOAuthClientCommand, GenerateOAuthClientCommand } from './commands';
+
+function parseJwtExpiresIn(value: number | string): number | StringValue {
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  return value as StringValue;
+}
 
 @Module({})
 export class OAuthModule {
@@ -11,7 +20,7 @@ export class OAuthModule {
     const jwtSecret = options.oauth?.jwtSecret ?? 'change-me';
     const jwtIssuer = options.oauth?.jwtIssuer;
     const jwtAlgorithm = (options.oauth?.jwtAlgorithm ?? 'HS256') as 'HS256';
-    const accessTokenExpiresIn = options.oauth?.accessTokenExpiresIn ?? '1h';
+    const accessTokenExpiresIn = parseJwtExpiresIn(options.oauth?.accessTokenExpiresIn ?? '1h');
 
     const oauthCommandsEnabled = options.commands?.oauth?.enabled ?? true;
     const commandProviders = oauthCommandsEnabled

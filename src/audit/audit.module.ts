@@ -16,7 +16,9 @@ export class AuditModule implements NestModule {
     const mongoConnection = options.audit?.config?.connection;
     const mongoCollection = options.audit?.config?.collection ?? 'audit_logs';
     const sqlConnection = options.audit?.config?.connection;
-    const sqlType = options.audit?.config?.sqlType ?? 'postgres';
+    const sqlType = options.audit?.config?.sqlType === 'sqlite'
+      ? 'postgres'
+      : (options.audit?.config?.sqlType ?? 'postgres');
     const sqlSynchronize = options.audit?.config?.synchronize ?? false;
     const imports = [
       ...(useNoSql
