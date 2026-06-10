@@ -30,7 +30,6 @@ export class ApiToolkitModule {
       ],
       exports: [
         TOOLKIT_OPTIONS,
-        TOOLKIT_STORAGE_DRIVER,
         HttpModule,
         StorageModule,
         AuditModule,
