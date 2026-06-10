@@ -53,6 +53,8 @@ export interface ToolkitOptions {
     config?: {
       connection: string;
       collection?: string;
+      sqlType?: 'postgres' | 'mysql' | 'mariadb' | 'sqlite' | 'mssql';
+      synchronize?: boolean;
     };
   };
 }
