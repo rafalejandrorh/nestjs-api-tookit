@@ -1,6 +1,4 @@
-import type { RedisClientOptions } from '@liaoliaots/nestjs-redis';
-
-type RedisStorageConfig = RedisClientOptions | RedisClientOptions[];
+type RedisStorageConfig = Record<string, unknown> | Record<string, unknown>[];
 
 export interface OAuthToolkitUser {
   username: string;
