@@ -60,6 +60,8 @@ export interface ToolkitOptions {
   };
   errorRateLimit?: {
     enabled: boolean;
+    maxAttempts404?: number;
+    banDurationMs?: number;
     maxErrors: number;
     windowMs: number;
   };
