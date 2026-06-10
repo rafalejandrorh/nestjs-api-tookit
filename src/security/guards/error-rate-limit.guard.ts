@@ -1,4 +1,13 @@
-import { CanActivate, ExecutionContext, HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  Optional,
+} from '@nestjs/common';
 import type { ToolkitOptions } from '../../core/interfaces/toolkit-options.interface';
 import type { StorageDriver } from '../../storage/interfaces/storage.driver';
 import { TOOLKIT_OPTIONS, TOOLKIT_STORAGE_DRIVER } from '../../core/tokens';
@@ -20,8 +29,8 @@ function parseStoredErrorCount(value: string | null): number | null {
 @Injectable()
 export class ErrorRateLimitGuard implements CanActivate {
   constructor(
-    @Inject(TOOLKIT_OPTIONS) private options: ToolkitOptions,
-    @Inject(TOOLKIT_STORAGE_DRIVER) private storage: StorageDriver,
+    @Inject(TOOLKIT_OPTIONS) private readonly options: ToolkitOptions,
+    @Optional() @Inject(TOOLKIT_STORAGE_DRIVER) private readonly storage?: StorageDriver,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -31,6 +40,12 @@ export class ErrorRateLimitGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     if (!matchesToolkitRoute(request.path, this.options.globalMatch)) {
       return true;
+    }
+
+    if (!this.storage) {
+      throw new InternalServerErrorException(
+        'TOOLKIT_STORAGE_DRIVER is required when errorRateLimit is enabled',
+      );
     }
 
     const ip = request.ip;

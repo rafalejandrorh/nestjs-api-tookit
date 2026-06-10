@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { HttpStatus, InternalServerErrorException } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import type { ToolkitOptions } from '../../core/interfaces/toolkit-options.interface';
 import type { StorageDriver } from '../../storage/interfaces/storage.driver';
@@ -27,6 +27,18 @@ describe('ErrorRateLimitGuard', () => {
       errorRateLimit: { enabled: false, maxErrors: 3, windowMs: 60000 },
     };
     const guard = new ErrorRateLimitGuard(options, createStorageDriver(null));
+
+    await expect(
+      guard.canActivate(createExecutionContext({ path: '/api/orders', ip: '127.0.0.1' })),
+    ).resolves.toBe(true);
+  });
+
+  it('allows the request without storage when rate limit is disabled', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      errorRateLimit: { enabled: false, maxErrors: 3, windowMs: 60000 },
+    };
+    const guard = new ErrorRateLimitGuard(options, undefined);
 
     await expect(
       guard.canActivate(createExecutionContext({ path: '/api/orders', ip: '127.0.0.1' })),
@@ -73,6 +85,18 @@ describe('ErrorRateLimitGuard', () => {
       message: 'Too many failed requests',
       status: HttpStatus.TOO_MANY_REQUESTS,
     });
+  });
+
+  it('throws InternalServerErrorException when enabled without storage driver', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      errorRateLimit: { enabled: true, maxErrors: 3, windowMs: 60000 },
+    };
+    const guard = new ErrorRateLimitGuard(options, undefined);
+
+    await expect(
+      guard.canActivate(createExecutionContext({ path: '/api/orders', ip: '127.0.0.1' })),
+    ).rejects.toBeInstanceOf(InternalServerErrorException);
   });
 
   it('ignores non-numeric stored counters and allows the request', async () => {
