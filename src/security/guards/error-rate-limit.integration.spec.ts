@@ -14,7 +14,12 @@ function createStorageDriver(state: StorageState) {
     set: jest.fn(async (key: string, value: string) => {
       state[key] = value;
     }),
-    increment: jest.fn(),
+    increment: jest.fn(async (key: string) => {
+      const current = Number(state[key] ?? '0');
+      const next = Number.isNaN(current) ? 1 : current + 1;
+      state[key] = `${next}`;
+      return next;
+    }),
   };
 }
 
@@ -130,5 +135,27 @@ describe('ErrorRateLimitGuard integration', () => {
     );
 
     await request(app.getHttpServer()).get('/api/rate-limit-test').expect(200, { ok: true });
+  });
+
+  it('increments attempts on 404 at runtime and bans on the next guarded request', async () => {
+    app = await createApp(
+      {
+        storage: { type: 'memory' },
+        globalMatch: { include: ['^/api/'] },
+        errorRateLimit: { enabled: true, maxErrors: 0, windowMs: 60000 },
+      },
+      {},
+    );
+
+    await request(app.getHttpServer()).get('/api/missing-route').expect(404);
+
+    const response = await request(app.getHttpServer()).get('/api/rate-limit-test').expect(403);
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        statusCode: 403,
+        message: 'IP banned',
+        error: 'Forbidden',
+      }),
+    );
   });
 });
