@@ -13,6 +13,54 @@ Toolkit modular para APIs en NestJS con enfoque en:
 yarn install
 ```
 
+## Peer Dependencies Por Feature
+
+La librería define peers mínimos obligatorios y peers opcionales por feature.
+
+Peers obligatorios (siempre):
+
+- `@nestjs/common`
+- `@nestjs/core`
+- `reflect-metadata`
+- `rxjs`
+
+Peers opcionales (marcados con `peerDependenciesMeta.optional: true`):
+
+| Feature | Peers opcionales |
+| --- | --- |
+| OAuth (`oauth.enabled: true`) | `@nestjs/jwt` |
+| OAuth comandos (`commands.oauth.enabled: true`) | `nest-commander` |
+| OAuth SQL (`oauth.repository: 'sql'`) | `@nestjs/typeorm`, `typeorm`, `pg` (si `sqlType: 'postgres'`) |
+| OAuth NoSQL (`oauth.repository: 'nosql'`) | `@nestjs/mongoose`, `mongoose` |
+| Audit SQL (`audit.repository: 'sql'`) | `@nestjs/typeorm`, `typeorm`, `pg` (si `sqlType: 'postgres'`) |
+| Audit NoSQL (`audit.repository: 'nosql'`) | `@nestjs/mongoose`, `mongoose` |
+| Storage Redis (`storage.type: 'redis'`) | `@liaoliaots/nestjs-redis`, `ioredis` |
+
+Validación runtime:
+
+- El toolkit valida dependencias opcionales solo cuando activas la feature correspondiente.
+- Si falta un peer opcional, lanza un error explícito indicando qué paquete instalar.
+- Si no usas una feature opcional, no necesitas instalar sus peers.
+
+Instalación por escenario (ejemplos):
+
+```bash
+# Base (sin features opcionales)
+yarn add @nestjs/common @nestjs/core reflect-metadata rxjs @rafalejandrorh/nestjs-api-toolkit
+
+# OAuth + SQL (Postgres)
+yarn add @nestjs/jwt @nestjs/typeorm typeorm pg
+
+# OAuth/Audit NoSQL
+yarn add @nestjs/mongoose mongoose
+
+# Storage Redis
+yarn add @liaoliaots/nestjs-redis ioredis
+
+# Comandos OAuth CLI
+yarn add nest-commander
+```
+
 ## Uso Básico
 
 Importa el módulo en tu app host:
