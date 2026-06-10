@@ -250,6 +250,9 @@ ApiToolkitModule.forRoot({
   storage: { type: 'redis', config: { host: '127.0.0.1', port: 6379 } },
   errorRateLimit: {
     enabled: true,
+    maxAttempts404: 5,
+    banDurationMs: 60_000,
+    // Compat legacy (fallback):
     maxErrors: 5,
     windowMs: 60_000,
   },
@@ -269,6 +272,9 @@ import { ApiToolkitModule, ErrorRateLimitGuard } from '@rafalejandrorh/nestjs-ap
       storage: { type: 'memory' },
       errorRateLimit: {
         enabled: true,
+        maxAttempts404: 5,
+        banDurationMs: 60_000,
+        // Compat legacy (fallback):
         maxErrors: 5,
         windowMs: 60_000,
       },
@@ -302,9 +308,10 @@ export class LoginAttemptsController {
 
 Nota operativa importante:
 
-- El guard actual bloquea leyendo el contador `rate-limit:errors:<ip>` desde el storage configurado.
-- El incremento de ese contador debe hacerlo la app host o una pieza adicional de tu flujo de autenticación/errores.
-- Si no existe contador, el guard deja pasar la request.
+- El middleware de seguridad incrementa en runtime `ip_404_attempts_<ip>` cuando una respuesta termina en `404`.
+- El guard bloquea si `banned_ip_<ip>` existe o si los intentos superan `maxAttempts404`.
+- Al superar el umbral, se crea el ban temporal (`banned_ip_<ip>`) y se resetea `ip_404_attempts_<ip>`.
+- `maxErrors/windowMs` siguen soportados como compatibilidad hacia atrás cuando no se define `maxAttempts404/banDurationMs`.
 
 ## Scripts
 
