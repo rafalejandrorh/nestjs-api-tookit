@@ -4,8 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import type { Request } from 'express';
 import request from 'supertest';
 import type { ToolkitOptions } from '../../core/interfaces/toolkit-options.interface';
-import { TOOLKIT_STORAGE_DRIVER } from '../../core/tokens';
-import { SecurityModule } from '../security.module';
+import { TOOLKIT_OPTIONS, TOOLKIT_STORAGE_DRIVER } from '../../core/tokens';
 import { HmacGuard } from './hmac.guard';
 
 type HmacRequest = Request & Record<string, unknown>;
@@ -53,8 +52,9 @@ class TestHmacAppModule {
   static register(options: ToolkitOptions) {
     return {
       module: TestHmacAppModule,
-      imports: [SecurityModule.forRoot(options)],
       providers: [
+        HmacGuard,
+        { provide: TOOLKIT_OPTIONS, useValue: options },
         {
           provide: TOOLKIT_STORAGE_DRIVER,
           useValue: {
