@@ -70,7 +70,7 @@ export interface ToolkitOptions {
     repository: 'sql' | 'nosql';
     redactFields?: string[];
     config?: {
-      connection: string;
+      connection: string | undefined;
       collection?: string;
       sqlType?: 'postgres' | 'mysql' | 'mariadb' | 'sqlite' | 'mssql';
       synchronize?: boolean;
