@@ -33,18 +33,46 @@
   "peerDependencies": {
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/mongoose": "^11.0.4",
-    "@nestjs/platform-express": "^11.0.1",
     "@nestjs/typeorm": "^11.0.1",
     "@liaoliaots/nestjs-redis": "^10.0.0",
     "mongoose": "^9.7.0",
-    "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1",
     "pg": "^8.21.0",
     "typeorm": "^1.0.0",
     "ioredis": "^5.11.1",
     "nest-commander": "^3.20.1"
+  },
+  "peerDependenciesMeta": {
+    "@nestjs/jwt": {
+      "optional": true
+    },
+    "@nestjs/mongoose": {
+      "optional": true
+    },
+    "@nestjs/typeorm": {
+      "optional": true
+    },
+    "@liaoliaots/nestjs-redis": {
+      "optional": true
+    },
+    "mongoose": {
+      "optional": true
+    },
+    "pg": {
+      "optional": true
+    },
+    "typeorm": {
+      "optional": true
+    },
+    "ioredis": {
+      "optional": true
+    },
+    "nest-commander": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
