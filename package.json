@@ -7,8 +7,16 @@
   "author": "rafalejandrorh",
   "private": false,
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "README.md",
+    "LICENSE",
+    "dist"
+  ],
   "scripts": {
-    "build": "nest build",
+    "build": "tsc -p tsconfig.build.json",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -80,14 +88,6 @@
     "testEnvironment": "node",
     "roots": [
       "<rootDir>/src/"
-    ],
-    "publishConfig": {
-      "access": "public"
-    },
-    "files": [
-      "README.md",
-      "LICENSE",
-      "dist"
     ]
   }
 }
