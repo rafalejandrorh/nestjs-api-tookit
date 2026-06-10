@@ -28,6 +28,11 @@ class HealthController {
   check() {
     return { ok: true };
   }
+
+  @Get('boom')
+  boom(): never {
+    throw new BadRequestException('health invalid');
+  }
 }
 
 @Module({
@@ -159,5 +164,45 @@ describe('HTTP Toolkit integration', () => {
       .expect(404);
 
     expect(response.headers['x-api-toolkit']).toBeUndefined();
+  });
+
+  it('falls back to Nest default exception handling when filter is disabled', async () => {
+    app = await createApp({
+      storage: { type: 'memory' },
+      http: {
+        exception: {
+          enabled: false,
+        },
+      },
+    });
+
+    const response = await request(app.getHttpServer()).get('/api/http-test/bad-request').expect(400);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        statusCode: 400,
+        message: 'invalid query',
+        error: 'Bad Request',
+      }),
+    );
+  });
+
+  it('bypasses JSON filter on routes excluded by globalMatch', async () => {
+    app = await createApp({
+      storage: { type: 'memory' },
+      globalMatch: {
+        include: ['^/api/'],
+      },
+    });
+
+    const response = await request(app.getHttpServer()).get('/health/boom').expect(400);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        statusCode: 400,
+        message: 'health invalid',
+        error: 'Bad Request',
+      }),
+    );
   });
 });
