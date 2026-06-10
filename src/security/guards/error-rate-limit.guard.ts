@@ -38,6 +38,22 @@ function toTtlSeconds(windowMs: number): number {
   return Math.max(1, Math.ceil(windowMs / 1000));
 }
 
+function resolveMaxAttempts(options: ToolkitOptions['errorRateLimit']): number {
+  if (!options) {
+    return 3;
+  }
+
+  return options.maxAttempts404 ?? options.maxErrors;
+}
+
+function resolveBanDurationMs(options: ToolkitOptions['errorRateLimit']): number {
+  if (!options) {
+    return 60000;
+  }
+
+  return options.banDurationMs ?? options.windowMs;
+}
+
 @Injectable()
 export class ErrorRateLimitGuard implements CanActivate {
   constructor(
@@ -72,8 +88,9 @@ export class ErrorRateLimitGuard implements CanActivate {
     const legacyAttempts = parseStoredErrorCount(await this.storage.get(legacyAttemptKey));
     const currentErrors = parityAttempts ?? legacyAttempts;
 
-    if (currentErrors != null && currentErrors > this.options.errorRateLimit.maxErrors) {
-      const ttlSeconds = toTtlSeconds(this.options.errorRateLimit.windowMs);
+    const maxAttempts = resolveMaxAttempts(this.options.errorRateLimit);
+    if (currentErrors != null && currentErrors > maxAttempts) {
+      const ttlSeconds = toTtlSeconds(resolveBanDurationMs(this.options.errorRateLimit));
       await this.storage.set(banKey, '1', ttlSeconds);
       await this.storage.set(parityAttemptKey, '0', ttlSeconds);
       throw new ForbiddenException('IP banned');

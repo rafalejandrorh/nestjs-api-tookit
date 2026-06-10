@@ -115,6 +115,29 @@ describe('ErrorRateLimitGuard', () => {
     expect(storage.set).toHaveBeenCalledWith('ip_404_attempts_127.0.0.1', '0', 60);
   });
 
+  it('uses maxAttempts404 and banDurationMs when provided', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      errorRateLimit: {
+        enabled: true,
+        maxAttempts404: 1,
+        banDurationMs: 120000,
+        maxErrors: 999,
+        windowMs: 60000,
+      },
+    };
+    const storage = createStorageDriverWithMap({
+      'ip_404_attempts_127.0.0.1': '2',
+    });
+    const guard = new ErrorRateLimitGuard(options, storage);
+
+    await expect(
+      guard.canActivate(createExecutionContext({ path: '/api/orders', ip: '127.0.0.1' })),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(storage.set).toHaveBeenCalledWith('banned_ip_127.0.0.1', '1', 120);
+    expect(storage.set).toHaveBeenCalledWith('ip_404_attempts_127.0.0.1', '0', 120);
+  });
+
   it('throws InternalServerErrorException when enabled without storage driver', async () => {
     const options: ToolkitOptions = {
       storage: { type: 'memory' },
