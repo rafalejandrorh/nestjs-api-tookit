@@ -84,23 +84,27 @@ ApiToolkitModule.forRoot({
   storage: { type: 'memory' },
   oauth: {
     enabled: true,
+    repository: 'sql',
     jwtSecret: process.env.JWT_SECRET,
     jwtIssuer: 'my-api',
     jwtAlgorithm: 'HS256',
     accessTokenExpiresIn: '1h',
-    clients: [
-      {
-        clientId: 'my-client',
-        clientSecret: 'my-client-secret',
-        scopes: ['read', 'write'],
-        users: [
-          { username: 'alice', password: 'alice-password' },
-        ],
-      },
-    ],
+    config: {
+      connection: process.env.DATABASE_URL,
+      sqlType: 'postgres',
+      synchronize: false,
+    },
   },
 });
 ```
+
+Repositorios OAuth soportados:
+
+- `oauth.repository: 'sql'`: busca clientes en DB SQL vía TypeORM.
+- `oauth.repository: 'nosql'`: busca clientes en MongoDB vía Mongoose.
+- `oauth.repository: 'options'` (default): compatibilidad legacy leyendo `oauth.clients` del config.
+
+Si usas `sql` o `nosql`, `oauth.config.connection` es obligatorio.
 
 Ejemplo `client_credentials`:
 
