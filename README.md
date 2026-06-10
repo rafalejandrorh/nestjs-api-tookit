@@ -172,6 +172,109 @@ Notas:
 - Si `http.exception.enabled` es `false`, Nest usa su manejador de excepciones por defecto.
 - Si una ruta no coincide con `globalMatch`, este bloque HTTP no se aplica.
 
+## Configuración HMAC
+
+El guard HMAC se exporta desde el toolkit, pero la app host decide dónde aplicarlo.
+
+Configuración ejemplo:
+
+```ts
+ApiToolkitModule.forRoot({
+  globalMatch: {
+    include: ['^/api/secure'],
+  },
+  storage: { type: 'memory' },
+  hmac: {
+    enabled: true,
+    secretKey: process.env.HMAC_SECRET ?? 'change-me',
+  },
+});
+```
+
+Aplicación por controlador o handler:
+
+```ts
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { HmacGuard } from '@rafalejandrorh/nestjs-api-toolkit';
+
+@Controller('api/secure/orders')
+@UseGuards(HmacGuard)
+export class OrdersController {
+  @Post()
+  create(@Body() body: unknown) {
+    return { ok: true, body };
+  }
+}
+```
+
+Firma esperada por el guard actual:
+
+```ts
+import * as crypto from 'crypto';
+
+const body = { orderId: 42 };
+const signature = crypto
+  .createHmac('sha256', process.env.HMAC_SECRET ?? 'change-me')
+  .update(JSON.stringify(body))
+  .digest('hex');
+```
+
+El cliente debe enviar esa firma en el header `x-hmac-signature`.
+
+## Configuración Error Rate Limit
+
+El guard de rate limit también se exporta para que la app host decida si lo aplica a nivel global, de controlador o de ruta.
+
+Configuración ejemplo:
+
+```ts
+ApiToolkitModule.forRoot({
+  globalMatch: {
+    include: ['^/api/'],
+  },
+  storage: { type: 'redis', config: { host: '127.0.0.1', port: 6379 } },
+  errorRateLimit: {
+    enabled: true,
+    maxErrors: 5,
+    windowMs: 60_000,
+  },
+});
+```
+
+Aplicación global en la app host:
+
+```ts
+import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ApiToolkitModule, ErrorRateLimitGuard } from '@rafalejandrorh/nestjs-api-toolkit';
+
+@Module({
+  imports: [
+    ApiToolkitModule.forRoot({
+      storage: { type: 'memory' },
+      errorRateLimit: {
+        enabled: true,
+        maxErrors: 5,
+        windowMs: 60_000,
+      },
+    }),
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ErrorRateLimitGuard,
+    },
+  ],
+})
+export class AppModule {}
+```
+
+Nota operativa importante:
+
+- El guard actual bloquea leyendo el contador `rate-limit:errors:<ip>` desde el storage configurado.
+- El incremento de ese contador debe hacerlo la app host o una pieza adicional de tu flujo de autenticación/errores.
+- Si no existe contador, el guard deja pasar la request.
+
 ## Scripts
 
 ```bash
