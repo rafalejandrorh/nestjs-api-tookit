@@ -19,9 +19,9 @@ export class ApiToolkitModule {
       imports: [
         HttpModule.forRoot(options),
         StorageModule.forRoot(options),
+        SecurityModule.forRoot(options),
         AuditModule.forRoot(options),
         CacheModule,
-        SecurityModule,
         ...oauthImports,
       ],
       providers: [
