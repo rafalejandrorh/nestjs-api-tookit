@@ -130,6 +130,48 @@ curl -X POST http://localhost:3000/oauth/token \
   }'
 ```
 
+## Configuración HTTP Transversal
+
+El toolkit puede aplicar políticas HTTP comunes sobre rutas que cumplan `globalMatch`:
+
+- validación de `Content-Type: application/json` para métodos configurables,
+- headers de respuesta de seguridad,
+- serialización JSON uniforme de excepciones HTTP y errores internos.
+
+Configuración ejemplo:
+
+```ts
+ApiToolkitModule.forRoot({
+  globalMatch: {
+    include: ['^/api/', '^/oauth/'],
+    exclude: ['^/api/health'],
+  },
+  storage: { type: 'memory' },
+  http: {
+    contentType: {
+      enabled: true,
+      enforceForMethods: ['POST', 'PUT', 'PATCH'],
+    },
+    responseHeaders: {
+      enabled: true,
+      headers: {
+        'x-api-toolkit': 'enabled',
+      },
+    },
+    exception: {
+      enabled: true,
+      includeStack: false,
+    },
+  },
+});
+```
+
+Notas:
+
+- `http.exception.includeStack` debería quedar en `false` en producción.
+- Si `http.exception.enabled` es `false`, Nest usa su manejador de excepciones por defecto.
+- Si una ruta no coincide con `globalMatch`, este bloque HTTP no se aplica.
+
 ## Scripts
 
 ```bash
@@ -146,4 +188,5 @@ La suite actual cubre:
 - guards de seguridad,
 - middleware y repositorios de auditoría (SQL + NoSQL),
 - servicio OAuth,
+- middlewares y filtro HTTP transversal (unit + integración),
 - utilidades core.
