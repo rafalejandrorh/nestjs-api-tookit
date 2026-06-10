@@ -57,4 +57,9 @@ export interface ToolkitOptions {
       synchronize?: boolean;
     };
   };
+  commands?: {
+    oauth?: {
+      enabled: boolean;
+    };
+  };
 }
