@@ -20,9 +20,16 @@ const SENSITIVE_AUDIT_KEYS = new Set([
   'api_key',
 ]);
 
-function sanitizeRequestBody(body: unknown): unknown {
+function getSensitiveAuditKeys(options: ToolkitOptions): Set<string> {
+  return new Set([
+    ...SENSITIVE_AUDIT_KEYS,
+    ...(options.audit?.redactFields?.map(field => field.toLowerCase()) ?? []),
+  ]);
+}
+
+function sanitizeRequestBody(body: unknown, sensitiveKeys: Set<string>): unknown {
   if (Array.isArray(body)) {
-    return body.map(item => sanitizeRequestBody(item));
+    return body.map(item => sanitizeRequestBody(item, sensitiveKeys));
   }
 
   if (!body || typeof body !== 'object') {
@@ -32,11 +39,11 @@ function sanitizeRequestBody(body: unknown): unknown {
   return Object.fromEntries(
     Object.entries(body).map(([key, value]) => {
       const normalizedKey = key.toLowerCase();
-      if (SENSITIVE_AUDIT_KEYS.has(normalizedKey)) {
+      if (sensitiveKeys.has(normalizedKey)) {
         return [key, '[REDACTED]'];
       }
 
-      return [key, sanitizeRequestBody(value)];
+      return [key, sanitizeRequestBody(value, sensitiveKeys)];
     }),
   );
 }
@@ -74,6 +81,7 @@ export class AuditMiddleware implements NestMiddleware {
     }
 
     const start = Date.now();
+    const sensitiveKeys = getSensitiveAuditKeys(this.options);
 
     // Interceptar el body de la respuesta es truculento en Express/Nest.
     // Sobrescribimos temporalmente res.send para capturar el payload.
@@ -92,7 +100,7 @@ export class AuditMiddleware implements NestMiddleware {
         method: req.method,
         url: req.originalUrl,
         ip: req.ip,
-        requestBody: sanitizeRequestBody(req.body),
+        requestBody: sanitizeRequestBody(req.body, sensitiveKeys),
         responseStatusCode: res.statusCode,
         responseBody: parseResponseBody(responseBody),
         durationMs,

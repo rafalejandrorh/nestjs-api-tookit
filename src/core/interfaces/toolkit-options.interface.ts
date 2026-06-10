@@ -31,6 +31,7 @@ export interface ToolkitOptions {
   audit?: {
     enabled: boolean;
     repository: 'sql' | 'nosql';
+    redactFields?: string[];
     config?: {
       connection: string;
     };

@@ -135,6 +135,80 @@ describe('AuditMiddleware', () => {
     );
   });
 
+  it('redacts additional configured fields from the request body', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      audit: {
+        enabled: true,
+        repository: 'sql',
+        redactFields: ['ssn', 'creditCard'],
+      },
+    };
+    const auditRepo: AuditRepository = { saveLog: jest.fn().mockResolvedValue(undefined) };
+    const middleware = new AuditMiddleware(options, auditRepo);
+    const next = createNext();
+    const { response, listeners } = createResponse();
+    const request = createRequest({
+      body: {
+        email: 'user@example.com',
+        ssn: '123-45-6789',
+        nested: {
+          creditCard: '4111111111111111',
+          profile: { name: 'Rafael' },
+        },
+      },
+    });
+
+    middleware.use(request, response, next);
+    response.send(JSON.stringify({ ok: true }));
+    await listeners.finish();
+
+    expect(auditRepo.saveLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestBody: {
+          email: 'user@example.com',
+          ssn: '[REDACTED]',
+          nested: {
+            creditCard: '[REDACTED]',
+            profile: { name: 'Rafael' },
+          },
+        },
+      }),
+    );
+  });
+
+  it('treats configured redacted fields case-insensitively', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      audit: {
+        enabled: true,
+        repository: 'sql',
+        redactFields: ['X-Api-Key'],
+      },
+    };
+    const auditRepo: AuditRepository = { saveLog: jest.fn().mockResolvedValue(undefined) };
+    const middleware = new AuditMiddleware(options, auditRepo);
+    const next = createNext();
+    const { response, listeners } = createResponse();
+    const request = createRequest({
+      body: {
+        'x-api-key': 'secret-key',
+      },
+    });
+
+    middleware.use(request, response, next);
+    response.send(JSON.stringify({ ok: true }));
+    await listeners.finish();
+
+    expect(auditRepo.saveLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestBody: {
+          'x-api-key': '[REDACTED]',
+        },
+      }),
+    );
+  });
+
   it('captures repository write errors without throwing', async () => {
     const options: ToolkitOptions = {
       storage: { type: 'memory' },
