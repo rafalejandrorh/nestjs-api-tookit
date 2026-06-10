@@ -143,6 +143,13 @@ describe('HTTP Toolkit integration', () => {
       globalMatch: {
         include: ['^/api/'],
       },
+      http: {
+        responseHeaders: {
+          headers: {
+            'x-api-toolkit': 'enabled',
+          },
+        },
+      },
     });
 
     const response = await request(app.getHttpServer())
@@ -151,8 +158,6 @@ describe('HTTP Toolkit integration', () => {
       .send('ok')
       .expect(404);
 
-    expect(response.headers['x-content-type-options']).toBeUndefined();
-    expect(response.headers['x-frame-options']).toBeUndefined();
-    expect(response.headers['referrer-policy']).toBeUndefined();
+    expect(response.headers['x-api-toolkit']).toBeUndefined();
   });
 });
