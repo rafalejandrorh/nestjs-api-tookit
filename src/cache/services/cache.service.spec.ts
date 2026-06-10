@@ -53,6 +53,36 @@ describe('CacheService', () => {
     expect(fallback).not.toHaveBeenCalled();
   });
 
+  it('returns cached false in remember without calling fallback', async () => {
+    const storage = createStorageDriver();
+    storage.get.mockResolvedValue(JSON.stringify(false));
+    const service = new CacheService(storage);
+    const fallback = jest.fn();
+
+    await expect(service.remember('feature-toggle', 30, fallback)).resolves.toBe(false);
+    expect(fallback).not.toHaveBeenCalled();
+  });
+
+  it('returns cached zero in remember without calling fallback', async () => {
+    const storage = createStorageDriver();
+    storage.get.mockResolvedValue(JSON.stringify(0));
+    const service = new CacheService(storage);
+    const fallback = jest.fn();
+
+    await expect(service.remember('counter', 30, fallback)).resolves.toBe(0);
+    expect(fallback).not.toHaveBeenCalled();
+  });
+
+  it('returns cached empty string in remember without calling fallback', async () => {
+    const storage = createStorageDriver();
+    storage.get.mockResolvedValue(JSON.stringify(''));
+    const service = new CacheService(storage);
+    const fallback = jest.fn();
+
+    await expect(service.remember('label', 30, fallback)).resolves.toBe('');
+    expect(fallback).not.toHaveBeenCalled();
+  });
+
   it('calls fallback and stores the fresh value when cache is empty', async () => {
     const storage = createStorageDriver();
     storage.get.mockResolvedValue(null);

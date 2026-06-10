@@ -25,7 +25,7 @@ export class CacheService {
 
   async remember<T>(key: string, ttlSeconds: number, fallback: () => Promise<T>): Promise<T> {
     const cached = await this.get<T>(key);
-    if (cached) return cached;
+    if (cached !== null) return cached;
 
     const freshData = await fallback();
     await this.set(key, freshData, ttlSeconds);
