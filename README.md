@@ -269,6 +269,22 @@ import { ApiToolkitModule, ErrorRateLimitGuard } from '@rafalejandrorh/nestjs-ap
 export class AppModule {}
 ```
 
+Aplicación por ruta o controlador:
+
+```ts
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { ErrorRateLimitGuard } from '@rafalejandrorh/nestjs-api-toolkit';
+
+@Controller('api/login-attempts')
+export class LoginAttemptsController {
+  @Get()
+  @UseGuards(ErrorRateLimitGuard)
+  list() {
+    return { ok: true };
+  }
+}
+```
+
 Nota operativa importante:
 
 - El guard actual bloquea leyendo el contador `rate-limit:errors:<ip>` desde el storage configurado.
