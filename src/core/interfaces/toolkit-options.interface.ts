@@ -40,6 +40,7 @@ export interface ToolkitOptions {
   hmac?: {
     enabled: boolean;
     secretKey: string;
+    protectedPathPrefix?: string;
     timestampTolerance?: number;
     requestAttributeName?: string;
   };

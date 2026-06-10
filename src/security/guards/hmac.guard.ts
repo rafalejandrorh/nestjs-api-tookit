@@ -66,6 +66,14 @@ function safeCompare(left: string, right: string): boolean {
   return crypto.timingSafeEqual(leftBuffer, rightBuffer);
 }
 
+function matchesProtectedPathPrefix(path: string, protectedPathPrefix?: string): boolean {
+  if (!protectedPathPrefix) {
+    return true;
+  }
+
+  return path.startsWith(protectedPathPrefix);
+}
+
 @Injectable()
 export class HmacGuard implements CanActivate {
   constructor(@Inject(TOOLKIT_OPTIONS) private readonly options: ToolkitOptions) {}
@@ -76,6 +84,10 @@ export class HmacGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<HmacRequest>();
+    if (!matchesProtectedPathPrefix(request.path, this.options.hmac.protectedPathPrefix)) {
+      return true;
+    }
+
     if (!matchesToolkitRoute(request.path, this.options.globalMatch)) {
       return true;
     }

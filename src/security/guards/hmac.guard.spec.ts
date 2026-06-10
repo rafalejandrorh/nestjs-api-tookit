@@ -62,13 +62,25 @@ describe('HmacGuard', () => {
     ).resolves.toBe(true);
   });
 
+  it('skips validation when the route does not match protectedPathPrefix', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      hmac: { enabled: true, secretKey: 'secret', protectedPathPrefix: '/api/secure' },
+    };
+    const guard = new HmacGuard(options);
+
+    await expect(
+      guard.canActivate(createExecutionContext({ path: '/public/health', headers: {}, body: {} })),
+    ).resolves.toBe(true);
+  });
+
   it('allows the request when the signature is valid', async () => {
     const body = { orderId: 42 };
     const secretKey = 'secret';
     const timestamp = `${Math.floor(Date.now() / 1000)}`;
     const options: ToolkitOptions = {
       storage: { type: 'memory' },
-      hmac: { enabled: true, secretKey },
+      hmac: { enabled: true, secretKey, protectedPathPrefix: '/api' },
     };
     const guard = new HmacGuard(options);
     const request = {
@@ -148,6 +160,29 @@ describe('HmacGuard', () => {
           originalUrl: '/api/orders',
           headers: {
             'x-timestamp': `${Math.floor(Date.now() / 1000) - 11}`,
+            'x-signature': 'ignored',
+          },
+          body: { orderId: 42 },
+        }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('throws ForbiddenException when timestamp is not an integer', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      hmac: { enabled: true, secretKey: 'secret', timestampTolerance: 10 },
+    };
+    const guard = new HmacGuard(options);
+
+    await expect(
+      guard.canActivate(
+        createExecutionContext({
+          method: 'POST',
+          path: '/api/orders',
+          originalUrl: '/api/orders',
+          headers: {
+            'x-timestamp': 'not-a-number',
             'x-signature': 'ignored',
           },
           body: { orderId: 42 },
