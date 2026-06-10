@@ -1,4 +1,4 @@
-import { HttpStatus, InternalServerErrorException } from '@nestjs/common';
+import { ForbiddenException, InternalServerErrorException } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import type { ToolkitOptions } from '../../core/interfaces/toolkit-options.interface';
 import type { StorageDriver } from '../../storage/interfaces/storage.driver';
@@ -16,6 +16,16 @@ function createStorageDriver(getValue: string | null): StorageDriver {
   return {
     get: jest.fn().mockResolvedValue(getValue),
     set: jest.fn(),
+    increment: jest.fn(),
+  };
+}
+
+function createStorageDriverWithMap(values: Record<string, string | null>): StorageDriver {
+  return {
+    get: jest.fn(async (key: string) => values[key] ?? null),
+    set: jest.fn(async (key: string, value: string) => {
+      values[key] = value;
+    }),
     increment: jest.fn(),
   };
 }
@@ -72,19 +82,37 @@ describe('ErrorRateLimitGuard', () => {
     ).resolves.toBe(true);
   });
 
-  it('throws HttpException with 429 when current errors exceed the threshold', async () => {
+  it('throws ForbiddenException when the IP is already banned', async () => {
     const options: ToolkitOptions = {
       storage: { type: 'memory' },
       errorRateLimit: { enabled: true, maxErrors: 3, windowMs: 60000 },
     };
-    const guard = new ErrorRateLimitGuard(options, createStorageDriver('3'));
+    const storage = createStorageDriverWithMap({
+      'banned_ip_127.0.0.1': '1',
+    });
+    const guard = new ErrorRateLimitGuard(options, storage);
 
     await expect(
       guard.canActivate(createExecutionContext({ path: '/api/orders', ip: '127.0.0.1' })),
-    ).rejects.toMatchObject({
-      message: 'Too many failed requests',
-      status: HttpStatus.TOO_MANY_REQUESTS,
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(storage.set).not.toHaveBeenCalled();
+  });
+
+  it('activates ban and throws ForbiddenException when attempts exceed threshold', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      errorRateLimit: { enabled: true, maxErrors: 3, windowMs: 60000 },
+    };
+    const storage = createStorageDriverWithMap({
+      'ip_404_attempts_127.0.0.1': '4',
     });
+    const guard = new ErrorRateLimitGuard(options, storage);
+
+    await expect(
+      guard.canActivate(createExecutionContext({ path: '/api/orders', ip: '127.0.0.1' })),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(storage.set).toHaveBeenCalledWith('banned_ip_127.0.0.1', '1', 60);
+    expect(storage.set).toHaveBeenCalledWith('ip_404_attempts_127.0.0.1', '0', 60);
   });
 
   it('throws InternalServerErrorException when enabled without storage driver', async () => {
@@ -117,6 +145,21 @@ describe('ErrorRateLimitGuard', () => {
       errorRateLimit: { enabled: true, maxErrors: 3, windowMs: 60000 },
     };
     const guard = new ErrorRateLimitGuard(options, createStorageDriver('-1'));
+
+    await expect(
+      guard.canActivate(createExecutionContext({ path: '/api/orders', ip: '127.0.0.1' })),
+    ).resolves.toBe(true);
+  });
+
+  it('falls back to legacy counter key when parity counter key is missing', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      errorRateLimit: { enabled: true, maxErrors: 3, windowMs: 60000 },
+    };
+    const storage = createStorageDriverWithMap({
+      'rate-limit:errors:127.0.0.1': '2',
+    });
+    const guard = new ErrorRateLimitGuard(options, storage);
 
     await expect(
       guard.canActivate(createExecutionContext({ path: '/api/orders', ip: '127.0.0.1' })),

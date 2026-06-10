@@ -1,8 +1,7 @@
 import {
   CanActivate,
   ExecutionContext,
-  HttpException,
-  HttpStatus,
+  ForbiddenException,
   Inject,
   Injectable,
   InternalServerErrorException,
@@ -24,6 +23,19 @@ function parseStoredErrorCount(value: string | null): number | null {
   }
 
   return parsed;
+}
+
+function parseStoredBoolean(value: string | null): boolean {
+  if (value == null) {
+    return false;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return normalized === '1' || normalized === 'true';
+}
+
+function toTtlSeconds(windowMs: number): number {
+  return Math.max(1, Math.ceil(windowMs / 1000));
 }
 
 @Injectable()
@@ -49,12 +61,24 @@ export class ErrorRateLimitGuard implements CanActivate {
     }
 
     const ip = request.ip;
-    const key = `rate-limit:errors:${ip}`;
-    const currentErrors = parseStoredErrorCount(await this.storage.get(key));
-
-    if (currentErrors != null && currentErrors >= this.options.errorRateLimit.maxErrors) {
-      throw new HttpException('Too many failed requests', HttpStatus.TOO_MANY_REQUESTS);
+    const banKey = `banned_ip_${ip}`;
+    if (parseStoredBoolean(await this.storage.get(banKey))) {
+      throw new ForbiddenException('IP banned');
     }
+
+    const legacyAttemptKey = `rate-limit:errors:${ip}`;
+    const parityAttemptKey = `ip_404_attempts_${ip}`;
+    const parityAttempts = parseStoredErrorCount(await this.storage.get(parityAttemptKey));
+    const legacyAttempts = parseStoredErrorCount(await this.storage.get(legacyAttemptKey));
+    const currentErrors = parityAttempts ?? legacyAttempts;
+
+    if (currentErrors != null && currentErrors > this.options.errorRateLimit.maxErrors) {
+      const ttlSeconds = toTtlSeconds(this.options.errorRateLimit.windowMs);
+      await this.storage.set(banKey, '1', ttlSeconds);
+      await this.storage.set(parityAttemptKey, '0', ttlSeconds);
+      throw new ForbiddenException('IP banned');
+    }
+
     return true;
   }
 }
