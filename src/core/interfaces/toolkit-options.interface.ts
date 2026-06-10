@@ -15,6 +15,8 @@ export interface OAuthToolkitClient {
   users?: OAuthToolkitUser[];
 }
 
+export type OAuthRepositoryType = 'options' | 'sql' | 'nosql';
+
 export interface ToolkitOptions {
   globalMatch?: {
     include: (string | RegExp)[];
@@ -31,11 +33,18 @@ export interface ToolkitOptions {
       };
   oauth?: {
     enabled: boolean;
+    repository?: OAuthRepositoryType;
     jwtSecret?: string;
     jwtIssuer?: string;
     jwtAlgorithm?: string;
     accessTokenExpiresIn?: number | string;
     clients?: OAuthToolkitClient[];
+    config?: {
+      connection?: string;
+      collection?: string;
+      sqlType?: 'postgres' | 'mysql' | 'mariadb' | 'mssql' | undefined;
+      synchronize?: boolean;
+    };
   };
   hmac?: {
     enabled: boolean;
