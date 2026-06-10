@@ -41,6 +41,20 @@ export interface ToolkitOptions {
     enabled: boolean;
     secretKey: string;
   };
+  http?: {
+    contentType?: {
+      enabled?: boolean;
+      enforceForMethods?: string[];
+    };
+    exception?: {
+      enabled?: boolean;
+      includeStack?: boolean;
+    };
+    responseHeaders?: {
+      enabled?: boolean;
+      headers?: Record<string, string>;
+    };
+  };
   errorRateLimit?: {
     enabled: boolean;
     maxErrors: number;

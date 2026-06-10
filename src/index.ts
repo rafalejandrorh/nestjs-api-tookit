@@ -7,6 +7,7 @@ export * from './audit';
 export * from './cache';
 export * from './security';
 export * from './oauth';
+export * from './http';
 
 // Exportar las interfaces para que la app tenga tipado fuerte al configurar
 export * from './core/interfaces/toolkit-options.interface';
