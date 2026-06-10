@@ -5,8 +5,8 @@
   "version": "1.0.0",
   "description": "",
   "author": "rafalejandrorh",
-  "private": true,
-  "license": "UNLICENSED",
+  "private": false,
+  "license": "MIT",
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
@@ -80,6 +80,14 @@
     "testEnvironment": "node",
     "roots": [
       "<rootDir>/src/"
+    ],
+    "publishConfig": {
+      "access": "public"
+    },
+    "files": [
+      "README.md",
+      "LICENSE",
+      "dist"
     ]
   }
 }
