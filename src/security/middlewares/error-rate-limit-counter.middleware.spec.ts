@@ -101,4 +101,27 @@ describe('ErrorRateLimitCounterMiddleware', () => {
     await Promise.resolve();
     expect(storage.increment).not.toHaveBeenCalled();
   });
+
+  it('uses banDurationMs for attempts TTL when provided', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      errorRateLimit: {
+        enabled: true,
+        maxAttempts404: 3,
+        banDurationMs: 120000,
+        maxErrors: 3,
+        windowMs: 60000,
+      },
+    };
+    const storage = createStorage();
+    const middleware = new ErrorRateLimitCounterMiddleware(options, storage);
+    const next = createNext();
+    const { response, listeners } = createResponse(404);
+
+    middleware.use(createRequest(), response, next);
+    listeners.finish();
+
+    await Promise.resolve();
+    expect(storage.increment).toHaveBeenCalledWith('ip_404_attempts_127.0.0.1', 120);
+  });
 });

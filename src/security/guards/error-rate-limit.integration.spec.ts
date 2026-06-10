@@ -173,4 +173,28 @@ describe('ErrorRateLimitGuard integration', () => {
       }),
     );
   });
+
+  it('uses maxAttempts404 and banDurationMs in runtime flow', async () => {
+    const state: StorageState = {
+      'ip_404_attempts_::ffff:127.0.0.1': '2',
+    };
+
+    app = await createApp(
+      {
+        storage: { type: 'memory' },
+        errorRateLimit: {
+          enabled: true,
+          maxAttempts404: 1,
+          banDurationMs: 120000,
+          maxErrors: 99,
+          windowMs: 60000,
+        },
+      },
+      state,
+    );
+
+    await request(app.getHttpServer()).get('/api/rate-limit-test').expect(403);
+    expect(state['banned_ip_::ffff:127.0.0.1']).toBe('1');
+    expect(state['ip_404_attempts_::ffff:127.0.0.1']).toBe('0');
+  });
 });

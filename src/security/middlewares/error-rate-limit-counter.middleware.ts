@@ -9,6 +9,14 @@ function toTtlSeconds(windowMs: number): number {
   return Math.max(1, Math.ceil(windowMs / 1000));
 }
 
+function resolveBanDurationMs(options: ToolkitOptions['errorRateLimit']): number {
+  if (!options) {
+    return 60000;
+  }
+
+  return options.banDurationMs ?? options.windowMs;
+}
+
 @Injectable()
 export class ErrorRateLimitCounterMiddleware implements NestMiddleware {
   constructor(
@@ -35,7 +43,7 @@ export class ErrorRateLimitCounterMiddleware implements NestMiddleware {
       }
 
       const key = `ip_404_attempts_${req.ip}`;
-      const ttlSeconds = toTtlSeconds(this.options.errorRateLimit?.windowMs ?? 60_000);
+      const ttlSeconds = toTtlSeconds(resolveBanDurationMs(this.options.errorRateLimit));
       this.storage?.increment(key, ttlSeconds).catch(() => undefined);
     });
 
