@@ -8,7 +8,7 @@ export class OAuthController {
   constructor(private readonly oauthService: OAuthService) {}
 
   @Post('token')
-  token(@Body() payload: OAuthTokenRequest): OAuthTokenResponse {
+  async token(@Body() payload: OAuthTokenRequest): Promise<OAuthTokenResponse> {
     return this.oauthService.issueToken(payload);
   }
 }
