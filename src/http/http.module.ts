@@ -7,10 +7,10 @@ import { ContentTypeMiddleware } from './middlewares/content-type.middleware';
 import { ResponseHeaderMiddleware } from './middlewares/response-header.middleware';
 
 @Module({})
-export class HttpToolkitModule implements NestModule {
+export class HttpModule implements NestModule {
   static forRoot(options: ToolkitOptions): DynamicModule {
     return {
-      module: HttpToolkitModule,
+      module: HttpModule,
       providers: [
         { provide: TOOLKIT_OPTIONS, useValue: options },
         ContentTypeMiddleware,

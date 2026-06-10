@@ -6,7 +6,7 @@ import { AuditModule } from './audit/audit.module';
 import { CacheModule } from './cache/cache.module';
 import { SecurityModule } from './security/security.module';
 import { OAuthModule } from './oauth/oauth.module';
-import { HttpToolkitModule } from './http/http.module';
+import { HttpModule } from './http/http.module';
 
 @Global()
 @Module({})
@@ -17,7 +17,7 @@ export class ApiToolkitModule {
     return {
       module: ApiToolkitModule,
       imports: [
-        HttpToolkitModule.forRoot(options),
+        HttpModule.forRoot(options),
         StorageModule.forRoot(options),
         AuditModule.forRoot(options),
         CacheModule,
@@ -31,7 +31,7 @@ export class ApiToolkitModule {
       exports: [
         TOOLKIT_OPTIONS,
         TOOLKIT_STORAGE_DRIVER,
-        HttpToolkitModule,
+        HttpModule,
         StorageModule,
         AuditModule,
         CacheModule,
