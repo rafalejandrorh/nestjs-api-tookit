@@ -393,6 +393,31 @@ Nota operativa importante:
 
 ## Comandos Disponibles
 
+CLI publicado para proyecto host (sin crear `src/cli.ts`):
+
+```bash
+npx toolkit-cli --help
+npx toolkit-cli toolkit:oauth-client:generate --scopes read,write
+npx toolkit-cli toolkit:oauth-client:find my-client
+```
+
+Variables de entorno soportadas por el CLI publicado:
+
+- `TOOLKIT_JWT_SECRET` (opcional, default `change-me`)
+- `TOOLKIT_OAUTH_CLIENTS_JSON` (opcional, JSON array de clientes OAuth)
+- `TOOLKIT_OAUTH_CLIENT_ID` + `TOOLKIT_OAUTH_CLIENT_SECRET` (opcional, cliente único)
+- `TOOLKIT_OAUTH_SCOPES` (opcional, CSV para scopes de cliente)
+- `TOOLKIT_OAUTH_USERNAME` + `TOOLKIT_OAUTH_PASSWORD` (opcional, usuario para password grant)
+- `TOOLKIT_OAUTH_USER_SCOPES` (opcional, CSV para scopes del usuario)
+
+Ejemplo mínimo para `find` en host:
+
+```bash
+export TOOLKIT_OAUTH_CLIENT_ID=my-client
+export TOOLKIT_OAUTH_CLIENT_SECRET=my-secret
+npx toolkit-cli toolkit:oauth-client:find my-client --reveal-secret true
+```
+
 Scripts del paquete:
 
 ```bash

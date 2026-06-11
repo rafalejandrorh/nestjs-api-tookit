@@ -7,6 +7,9 @@
   "author": "rafalejandrorh",
   "private": false,
   "license": "MIT",
+  "bin": {
+    "toolkit-cli": "dist/cli.js"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -18,6 +21,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "cli:help": "node dist/cli.js --help",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
