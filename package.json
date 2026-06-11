@@ -8,7 +8,7 @@
   "private": false,
   "license": "MIT",
   "bin": {
-    "toolkit-cli": "dist/cli.js"
+    "toolkit-cli": "bin/toolkit-cli.js"
   },
   "publishConfig": {
     "access": "public"
@@ -16,6 +16,7 @@
   "files": [
     "README.md",
     "LICENSE",
+    "bin",
     "dist",
     "!dist/**/*.tsbuildinfo"
   ],

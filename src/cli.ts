@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { Module } from '@nestjs/common';
 import { CommandFactory } from 'nest-commander';
 import type { OAuthToolkitClient, ToolkitOptions } from './core/interfaces/toolkit-options.interface';
