@@ -9,6 +9,14 @@ Toolkit modular para APIs en NestJS con enfoque en:
 
 ## Instalación
 
+Como dependencia en un proyecto host:
+
+```bash
+yarn add @rafalejandrorh/nestjs-api-toolkit
+```
+
+Para desarrollo de esta librería:
+
 ```bash
 yarn install
 ```
@@ -401,16 +409,44 @@ npx toolkit-cli toolkit:oauth-client:generate --scopes read,write
 npx toolkit-cli toolkit:oauth-client:find my-client
 ```
 
+Comandos OAuth disponibles:
+
+- `toolkit:oauth-client:generate`
+- `toolkit:oauth-client:find <clientId>`
+
+Flags de `toolkit:oauth-client:generate`:
+
+- `--client-id [clientId]`
+- `--client-secret [clientSecret]`
+- `--scopes [scope1,scope2]`
+- `--username [username]`
+- `--password [password]`
+
+Flags de `toolkit:oauth-client:find <clientId>`:
+
+- `--reveal-secret true`
+
 Variables de entorno soportadas por el CLI publicado:
 
 - `TOOLKIT_JWT_SECRET` (opcional, default `change-me`)
+- `TOOLKIT_OAUTH_REPOSITORY` (opcional, `options` | `sql` | `nosql`, default `options`)
+- `TOOLKIT_OAUTH_CONNECTION` (requerido cuando `TOOLKIT_OAUTH_REPOSITORY` es `sql` o `nosql`)
+- `TOOLKIT_OAUTH_SQL_TYPE` (opcional para SQL: `postgres` | `mysql` | `mariadb` | `mssql`)
+- `TOOLKIT_OAUTH_SYNCHRONIZE` (opcional para SQL: `true` | `false`)
+- `TOOLKIT_OAUTH_COLLECTION` (opcional para NoSQL, default `oauth_clients`)
 - `TOOLKIT_OAUTH_CLIENTS_JSON` (opcional, JSON array de clientes OAuth)
 - `TOOLKIT_OAUTH_CLIENT_ID` + `TOOLKIT_OAUTH_CLIENT_SECRET` (opcional, cliente único)
 - `TOOLKIT_OAUTH_SCOPES` (opcional, CSV para scopes de cliente)
 - `TOOLKIT_OAUTH_USERNAME` + `TOOLKIT_OAUTH_PASSWORD` (opcional, usuario para password grant)
 - `TOOLKIT_OAUTH_USER_SCOPES` (opcional, CSV para scopes del usuario)
 
-Ejemplo mínimo para `find` en host:
+Comportamiento de persistencia CLI:
+
+- `toolkit:oauth-client:generate` persiste automáticamente si `TOOLKIT_OAUTH_REPOSITORY=sql|nosql`.
+- `toolkit:oauth-client:find` consulta el repositorio activo (`options`, `sql` o `nosql`).
+- Con `TOOLKIT_OAUTH_REPOSITORY=options`, `generate` solo imprime el cliente (no persiste).
+
+Ejemplo mínimo para `find` en host (modo `options`):
 
 ```bash
 export TOOLKIT_OAUTH_CLIENT_ID=my-client
@@ -418,54 +454,40 @@ export TOOLKIT_OAUTH_CLIENT_SECRET=my-secret
 npx toolkit-cli toolkit:oauth-client:find my-client --reveal-secret true
 ```
 
+Ejemplo `generate` persistiendo en SQL:
+
+```bash
+export TOOLKIT_OAUTH_REPOSITORY=sql
+export TOOLKIT_OAUTH_CONNECTION='postgres://user:pass@localhost:5432/mydb'
+export TOOLKIT_OAUTH_SQL_TYPE=postgres
+export TOOLKIT_OAUTH_SYNCHRONIZE=false
+
+npx toolkit-cli toolkit:oauth-client:generate --client-id my-client --client-secret my-secret --scopes read,write
+```
+
+Ejemplo `generate` persistiendo en NoSQL (MongoDB):
+
+```bash
+export TOOLKIT_OAUTH_REPOSITORY=nosql
+export TOOLKIT_OAUTH_CONNECTION='mongodb://localhost:27017/mydb'
+export TOOLKIT_OAUTH_COLLECTION=oauth_clients
+
+npx toolkit-cli toolkit:oauth-client:generate --client-id my-client --client-secret my-secret --scopes read,write
+```
+
+Uso local del CLI durante desarrollo de la librería:
+
+```bash
+npx ts-node src/cli.ts --help
+npx ts-node src/cli.ts toolkit:oauth-client:generate --client-id demo --client-secret secret --scopes read,write
+npx ts-node src/cli.ts toolkit:oauth-client:find demo --reveal-secret true
+```
+
 Scripts del paquete:
 
 ```bash
 yarn build
-yarn test
-yarn test:cov
-yarn lint
-```
-
-Comandos CLI OAuth (nest-commander):
-
-```bash
-yarn ts-node -r tsconfig-paths/register src/main.ts toolkit:oauth-client:generate
-yarn ts-node -r tsconfig-paths/register src/main.ts toolkit:oauth-client:find <clientId>
-```
-
-`toolkit:oauth-client:generate`:
-
-- genera `clientId` y `clientSecret` aleatorios si no se envían.
-- flags disponibles:
-  - `--client-id [clientId]`
-  - `--client-secret [clientSecret]`
-  - `--scopes [scope1,scope2]`
-  - `--username [username]`
-  - `--password [password]`
-
-Ejemplo:
-
-```bash
-yarn ts-node -r tsconfig-paths/register src/main.ts toolkit:oauth-client:generate --scopes read,write --username alice --password alice-password
-```
-
-`toolkit:oauth-client:find <clientId>`:
-
-- busca el cliente en `oauth.clients` de la configuración actual.
-- por defecto redacta `clientSecret`.
-- flag opcional:
-  - `--reveal-secret true`
-
-Ejemplo:
-
-```bash
-yarn ts-node -r tsconfig-paths/register src/main.ts toolkit:oauth-client:find my-client --reveal-secret true
-```
-
-## Scripts
-
-```bash
+yarn cli:help
 yarn test
 yarn test:cov
 yarn lint
