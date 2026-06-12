@@ -1,7 +1,7 @@
 import { Inject } from '@nestjs/common';
 import { Command, CommandRunner, Option } from 'nest-commander';
-import type { ToolkitOptions } from '../../core/interfaces/toolkit-options.interface';
-import { TOOLKIT_OPTIONS } from '../../core/tokens';
+import { TOOLKIT_OAUTH_CLIENT_REPOSITORY } from '../../core/tokens';
+import type { OAuthClientRepository } from '../interfaces/oauth-client-repository.interface';
 
 type FindOAuthClientCommandOptions = {
   revealSecret?: boolean;
@@ -13,7 +13,10 @@ type FindOAuthClientCommandOptions = {
   arguments: '<clientId>',
 })
 export class FindOAuthClientCommand extends CommandRunner {
-  constructor(@Inject(TOOLKIT_OPTIONS) private readonly options: ToolkitOptions) {
+  constructor(
+    @Inject(TOOLKIT_OAUTH_CLIENT_REPOSITORY)
+    private readonly oauthClientRepository: OAuthClientRepository,
+  ) {
     super();
   }
 
@@ -28,7 +31,7 @@ export class FindOAuthClientCommand extends CommandRunner {
       throw new Error('clientId is required');
     }
 
-    const client = (this.options.oauth?.clients ?? []).find(item => item.clientId === clientId);
+    const client = await this.oauthClientRepository.findByClientId(clientId);
     if (!client) {
       throw new Error(`OAuth client not found for clientId: ${clientId}`);
     }
