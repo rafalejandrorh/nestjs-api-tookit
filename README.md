@@ -432,6 +432,8 @@ Regla de precedencia:
 
 - El CLI prioriza variables con prefijo `TOOLKIT_`.
 - Si no existen, usa fallback a variables comunes del host.
+- El CLI carga automáticamente `.env` al iniciar (`dotenv.config()`) y soporta expansión con `dotenv-expand`.
+- Puedes usar referencias como `TOOLKIT_OAUTH_CONNECTION=${DATABASE_URL}` dentro de `.env`.
 
 - `TOOLKIT_JWT_SECRET` (fallback: `JWT_SECRET`, default final `change-me`)
 - `TOOLKIT_OAUTH_REPOSITORY` (fallback: `OAUTH_REPOSITORY`, default final `options`)

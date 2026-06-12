@@ -1,8 +1,13 @@
 #!/usr/bin/env node
 import { Module } from '@nestjs/common';
+import dotenv from 'dotenv';
+import dotenvExpand from 'dotenv-expand';
 import { CommandFactory } from 'nest-commander';
 import type { OAuthToolkitClient, ToolkitOptions } from './core/interfaces/toolkit-options.interface';
 import { OAuthModule } from './oauth/oauth.module';
+
+// Carga .env desde el inicio y permite expansión de referencias como ${VAR}.
+dotenvExpand.expand(dotenv.config());
 
 type CliOAuthRepository = 'options' | 'sql' | 'nosql';
 type CliOAuthConfig = {
