@@ -11,4 +11,10 @@ export class OptionsOAuthClientRepository implements OAuthClientRepository {
     const client = (this.options.oauth?.clients ?? []).find(item => item.clientId === clientId);
     return client ?? null;
   }
+
+  async saveClient(_: OAuthToolkitClient): Promise<void> {
+    throw new Error(
+      'OAuth persistence is not available when oauth.repository is "options". Use oauth.repository="sql" or "nosql" to persist generated clients.',
+    );
+  }
 }

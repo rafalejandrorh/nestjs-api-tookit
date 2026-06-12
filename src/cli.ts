@@ -4,6 +4,57 @@ import { CommandFactory } from 'nest-commander';
 import type { OAuthToolkitClient, ToolkitOptions } from './core/interfaces/toolkit-options.interface';
 import { OAuthModule } from './oauth/oauth.module';
 
+type CliOAuthRepository = 'options' | 'sql' | 'nosql';
+type CliOAuthConfig = {
+  connection?: string;
+  collection?: string;
+  sqlType?: 'postgres' | 'mysql' | 'mariadb' | 'mssql' | undefined;
+  synchronize?: boolean;
+};
+
+function parseBoolean(value?: string): boolean | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  return value === 'true';
+}
+
+function buildCliOAuthRepository(): CliOAuthRepository {
+  const repository = process.env.TOOLKIT_OAUTH_REPOSITORY ?? 'options';
+  if (repository !== 'options' && repository !== 'sql' && repository !== 'nosql') {
+    throw new Error('TOOLKIT_OAUTH_REPOSITORY must be one of: options, sql, nosql');
+  }
+
+  return repository;
+}
+
+function buildCliOAuthConfig(repository: CliOAuthRepository): CliOAuthConfig | undefined {
+  if (repository === 'options') {
+    return undefined;
+  }
+
+  const connection = process.env.TOOLKIT_OAUTH_CONNECTION;
+  if (!connection) {
+    throw new Error('TOOLKIT_OAUTH_CONNECTION is required when TOOLKIT_OAUTH_REPOSITORY is sql or nosql');
+  }
+
+  const sqlType = process.env.TOOLKIT_OAUTH_SQL_TYPE;
+
+  return {
+    connection,
+    collection: process.env.TOOLKIT_OAUTH_COLLECTION,
+    sqlType:
+      sqlType === 'postgres' ||
+      sqlType === 'mysql' ||
+      sqlType === 'mariadb' ||
+      sqlType === 'mssql'
+        ? sqlType
+        : undefined,
+    synchronize: parseBoolean(process.env.TOOLKIT_OAUTH_SYNCHRONIZE),
+  };
+}
+
 function parseScopes(value?: string): string[] | undefined {
   if (!value) {
     return undefined;
@@ -73,13 +124,16 @@ function buildCliOAuthClients(): OAuthToolkitClient[] {
   return parseSingleClientFromEnv();
 }
 
+const cliRepository = buildCliOAuthRepository();
+
 const cliOptions: ToolkitOptions = {
   storage: { type: 'memory' },
   oauth: {
     enabled: true,
-    repository: 'options',
+    repository: cliRepository,
     jwtSecret: process.env.TOOLKIT_JWT_SECRET ?? 'change-me',
     clients: buildCliOAuthClients(),
+    config: buildCliOAuthConfig(cliRepository),
   },
   commands: {
     oauth: {
