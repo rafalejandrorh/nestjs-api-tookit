@@ -1,6 +1,9 @@
 import { randomBytes } from 'crypto';
+import { Inject } from '@nestjs/common';
 import { Command, CommandRunner, Option } from 'nest-commander';
-import type { OAuthToolkitClient, OAuthToolkitUser } from '../../core/interfaces/toolkit-options.interface';
+import type { OAuthToolkitClient, OAuthToolkitUser, ToolkitOptions } from '../../core/interfaces/toolkit-options.interface';
+import { TOOLKIT_OAUTH_CLIENT_REPOSITORY, TOOLKIT_OPTIONS } from '../../core/tokens';
+import type { OAuthClientRepository } from '../interfaces/oauth-client-repository.interface';
 
 type GenerateOAuthClientCommandOptions = {
   clientId?: string;
@@ -26,6 +29,14 @@ function parseScopes(rawScopes?: string): string[] {
   description: 'Generate OAuth client credentials for toolkit configuration',
 })
 export class GenerateOAuthClientCommand extends CommandRunner {
+  constructor(
+    @Inject(TOOLKIT_OAUTH_CLIENT_REPOSITORY)
+    private readonly oauthClientRepository: OAuthClientRepository,
+    @Inject(TOOLKIT_OPTIONS) private readonly options: ToolkitOptions,
+  ) {
+    super();
+  }
+
   @Option({ flags: '--client-id [clientId]' })
   parseClientId(clientId: string): string {
     return clientId;
@@ -64,7 +75,17 @@ export class GenerateOAuthClientCommand extends CommandRunner {
       ...(users.length > 0 ? { users } : {}),
     };
 
+    const oauthRepositoryType = this.options.oauth?.repository ?? 'options';
+
+    if (oauthRepositoryType === 'sql' || oauthRepositoryType === 'nosql') {
+      await this.oauthClientRepository.saveClient(outputClient);
+    }
+
     process.stdout.write(`${JSON.stringify(outputClient, null, 2)}\n`);
+
+    if (oauthRepositoryType === 'sql' || oauthRepositoryType === 'nosql') {
+      process.stdout.write(`Persisted in ${oauthRepositoryType} repository\n`);
+    }
   }
 
   private buildUsers(username?: string, password?: string): OAuthToolkitUser[] {
