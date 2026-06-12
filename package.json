@@ -2,7 +2,7 @@
   "name": "@rafalejandrorh/nestjs-api-toolkit",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "",
   "author": "rafalejandrorh",
   "private": false,
