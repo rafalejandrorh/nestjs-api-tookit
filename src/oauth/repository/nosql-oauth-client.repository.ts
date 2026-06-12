@@ -25,4 +25,20 @@ export class NoSqlOAuthClientRepository implements OAuthClientRepository {
       ...(client.users ? { users: client.users } : {}),
     };
   }
+
+  async saveClient(client: OAuthToolkitClient): Promise<void> {
+    await this.model
+      .updateOne(
+        { clientId: client.clientId },
+        {
+          $set: {
+            clientSecret: client.clientSecret,
+            scopes: client.scopes,
+            users: client.users,
+          },
+        },
+        { upsert: true },
+      )
+      .exec();
+  }
 }

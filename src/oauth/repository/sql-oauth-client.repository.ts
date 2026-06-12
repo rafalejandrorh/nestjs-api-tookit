@@ -25,4 +25,23 @@ export class SqlOAuthClientRepository implements OAuthClientRepository {
       ...(client.users ? { users: client.users } : {}),
     };
   }
+
+  async saveClient(client: OAuthToolkitClient): Promise<void> {
+    const existing = await this.repository.findOne({ where: { clientId: client.clientId } });
+
+    const entity = existing
+      ? this.repository.merge(existing, {
+          clientSecret: client.clientSecret,
+          scopes: client.scopes ?? null,
+          users: client.users ?? null,
+        })
+      : this.repository.create({
+          clientId: client.clientId,
+          clientSecret: client.clientSecret,
+          scopes: client.scopes ?? null,
+          users: client.users ?? null,
+        });
+
+    await this.repository.save(entity);
+  }
 }

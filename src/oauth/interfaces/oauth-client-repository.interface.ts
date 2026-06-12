@@ -2,4 +2,5 @@ import type { OAuthToolkitClient } from '../../core/interfaces/toolkit-options.i
 
 export interface OAuthClientRepository {
   findByClientId(clientId: string): Promise<OAuthToolkitClient | null>;
+  saveClient(client: OAuthToolkitClient): Promise<void>;
 }
