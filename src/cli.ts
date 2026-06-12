@@ -12,6 +12,17 @@ type CliOAuthConfig = {
   synchronize?: boolean;
 };
 
+function readEnv(primaryKey: string, ...fallbackKeys: string[]): string | undefined {
+  const keys = [primaryKey, ...fallbackKeys];
+  for (const key of keys) {
+    const value = process.env[key];
+    if (value && value.trim().length > 0) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
 function parseBoolean(value?: string): boolean | undefined {
   if (!value) {
     return undefined;
@@ -21,7 +32,7 @@ function parseBoolean(value?: string): boolean | undefined {
 }
 
 function buildCliOAuthRepository(): CliOAuthRepository {
-  const repository = process.env.TOOLKIT_OAUTH_REPOSITORY ?? 'options';
+  const repository = readEnv('TOOLKIT_OAUTH_REPOSITORY', 'OAUTH_REPOSITORY') ?? 'options';
   if (repository !== 'options' && repository !== 'sql' && repository !== 'nosql') {
     throw new Error('TOOLKIT_OAUTH_REPOSITORY must be one of: options, sql, nosql');
   }
@@ -34,16 +45,22 @@ function buildCliOAuthConfig(repository: CliOAuthRepository): CliOAuthConfig | u
     return undefined;
   }
 
-  const connection = process.env.TOOLKIT_OAUTH_CONNECTION;
+  const connection = repository === 'sql'
+    ? readEnv('TOOLKIT_OAUTH_CONNECTION', 'DATABASE_URL')
+    : readEnv('TOOLKIT_OAUTH_CONNECTION', 'MONGODB_URI');
   if (!connection) {
-    throw new Error('TOOLKIT_OAUTH_CONNECTION is required when TOOLKIT_OAUTH_REPOSITORY is sql or nosql');
+    throw new Error(
+      repository === 'sql'
+        ? 'Define TOOLKIT_OAUTH_CONNECTION (preferido) o DATABASE_URL cuando TOOLKIT_OAUTH_REPOSITORY=sql'
+        : 'Define TOOLKIT_OAUTH_CONNECTION (preferido) o MONGODB_URI cuando TOOLKIT_OAUTH_REPOSITORY=nosql',
+    );
   }
 
-  const sqlType = process.env.TOOLKIT_OAUTH_SQL_TYPE;
+  const sqlType = readEnv('TOOLKIT_OAUTH_SQL_TYPE');
 
   return {
     connection,
-    collection: process.env.TOOLKIT_OAUTH_COLLECTION,
+    collection: readEnv('TOOLKIT_OAUTH_COLLECTION'),
     sqlType:
       sqlType === 'postgres' ||
       sqlType === 'mysql' ||
@@ -51,7 +68,7 @@ function buildCliOAuthConfig(repository: CliOAuthRepository): CliOAuthConfig | u
       sqlType === 'mssql'
         ? sqlType
         : undefined,
-    synchronize: parseBoolean(process.env.TOOLKIT_OAUTH_SYNCHRONIZE),
+    synchronize: parseBoolean(readEnv('TOOLKIT_OAUTH_SYNCHRONIZE')),
   };
 }
 
@@ -82,30 +99,28 @@ function parseClientsFromJsonEnv(rawJson?: string): OAuthToolkitClient[] {
 }
 
 function parseSingleClientFromEnv(): OAuthToolkitClient[] {
-  const clientId = process.env.TOOLKIT_OAUTH_CLIENT_ID;
-  const clientSecret = process.env.TOOLKIT_OAUTH_CLIENT_SECRET;
+  const clientId = readEnv('TOOLKIT_OAUTH_CLIENT_ID', 'OAUTH_CLIENT_ID');
+  const clientSecret = readEnv('TOOLKIT_OAUTH_CLIENT_SECRET', 'OAUTH_CLIENT_SECRET');
 
   if (!clientId || !clientSecret) {
     return [];
   }
 
-  const username = process.env.TOOLKIT_OAUTH_USERNAME;
-  const password = process.env.TOOLKIT_OAUTH_PASSWORD;
+  const username = readEnv('TOOLKIT_OAUTH_USERNAME', 'OAUTH_USERNAME');
+  const password = readEnv('TOOLKIT_OAUTH_PASSWORD', 'OAUTH_PASSWORD');
+  const clientScopes = parseScopes(readEnv('TOOLKIT_OAUTH_SCOPES', 'OAUTH_SCOPES'));
+  const userScopes = parseScopes(readEnv('TOOLKIT_OAUTH_USER_SCOPES', 'OAUTH_USER_SCOPES'));
   const client: OAuthToolkitClient = {
     clientId,
     clientSecret,
-    ...(parseScopes(process.env.TOOLKIT_OAUTH_SCOPES)
-      ? { scopes: parseScopes(process.env.TOOLKIT_OAUTH_SCOPES) }
-      : {}),
+    ...(clientScopes ? { scopes: clientScopes } : {}),
     ...(username && password
       ? {
           users: [
             {
               username,
               password,
-              ...(parseScopes(process.env.TOOLKIT_OAUTH_USER_SCOPES)
-                ? { scopes: parseScopes(process.env.TOOLKIT_OAUTH_USER_SCOPES) }
-                : {}),
+              ...(userScopes ? { scopes: userScopes } : {}),
             },
           ],
         }
@@ -116,7 +131,9 @@ function parseSingleClientFromEnv(): OAuthToolkitClient[] {
 }
 
 function buildCliOAuthClients(): OAuthToolkitClient[] {
-  const jsonClients = parseClientsFromJsonEnv(process.env.TOOLKIT_OAUTH_CLIENTS_JSON);
+  const jsonClients = parseClientsFromJsonEnv(
+    readEnv('TOOLKIT_OAUTH_CLIENTS_JSON', 'OAUTH_CLIENTS_JSON'),
+  );
   if (jsonClients.length > 0) {
     return jsonClients;
   }
@@ -131,7 +148,7 @@ const cliOptions: ToolkitOptions = {
   oauth: {
     enabled: true,
     repository: cliRepository,
-    jwtSecret: process.env.TOOLKIT_JWT_SECRET ?? 'change-me',
+    jwtSecret: readEnv('TOOLKIT_JWT_SECRET', 'JWT_SECRET') ?? 'change-me',
     clients: buildCliOAuthClients(),
     config: buildCliOAuthConfig(cliRepository),
   },

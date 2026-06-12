@@ -428,17 +428,22 @@ Flags de `toolkit:oauth-client:find <clientId>`:
 
 Variables de entorno soportadas por el CLI publicado:
 
-- `TOOLKIT_JWT_SECRET` (opcional, default `change-me`)
-- `TOOLKIT_OAUTH_REPOSITORY` (opcional, `options` | `sql` | `nosql`, default `options`)
-- `TOOLKIT_OAUTH_CONNECTION` (requerido cuando `TOOLKIT_OAUTH_REPOSITORY` es `sql` o `nosql`)
+Regla de precedencia:
+
+- El CLI prioriza variables con prefijo `TOOLKIT_`.
+- Si no existen, usa fallback a variables comunes del host.
+
+- `TOOLKIT_JWT_SECRET` (fallback: `JWT_SECRET`, default final `change-me`)
+- `TOOLKIT_OAUTH_REPOSITORY` (fallback: `OAUTH_REPOSITORY`, default final `options`)
+- `TOOLKIT_OAUTH_CONNECTION` (fallback SQL: `DATABASE_URL`, fallback NoSQL: `MONGODB_URI`)
 - `TOOLKIT_OAUTH_SQL_TYPE` (opcional para SQL: `postgres` | `mysql` | `mariadb` | `mssql`)
 - `TOOLKIT_OAUTH_SYNCHRONIZE` (opcional para SQL: `true` | `false`)
 - `TOOLKIT_OAUTH_COLLECTION` (opcional para NoSQL, default `oauth_clients`)
-- `TOOLKIT_OAUTH_CLIENTS_JSON` (opcional, JSON array de clientes OAuth)
-- `TOOLKIT_OAUTH_CLIENT_ID` + `TOOLKIT_OAUTH_CLIENT_SECRET` (opcional, cliente único)
-- `TOOLKIT_OAUTH_SCOPES` (opcional, CSV para scopes de cliente)
-- `TOOLKIT_OAUTH_USERNAME` + `TOOLKIT_OAUTH_PASSWORD` (opcional, usuario para password grant)
-- `TOOLKIT_OAUTH_USER_SCOPES` (opcional, CSV para scopes del usuario)
+- `TOOLKIT_OAUTH_CLIENTS_JSON` (fallback: `OAUTH_CLIENTS_JSON`)
+- `TOOLKIT_OAUTH_CLIENT_ID` + `TOOLKIT_OAUTH_CLIENT_SECRET` (fallback: `OAUTH_CLIENT_ID` + `OAUTH_CLIENT_SECRET`)
+- `TOOLKIT_OAUTH_SCOPES` (fallback: `OAUTH_SCOPES`)
+- `TOOLKIT_OAUTH_USERNAME` + `TOOLKIT_OAUTH_PASSWORD` (fallback: `OAUTH_USERNAME` + `OAUTH_PASSWORD`)
+- `TOOLKIT_OAUTH_USER_SCOPES` (fallback: `OAUTH_USER_SCOPES`)
 
 Comportamiento de persistencia CLI:
 
