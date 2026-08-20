@@ -93,7 +93,8 @@ Notas:
 
 - `storage.type` soporta `memory` y `redis`. `filesystem` está tipado pero **no implementado** y lanza error explícito al boot.
 - `audit` es opcional: solo se carga si `audit.enabled: true` (con `repository: 'sql' | 'nosql'`).
-- Los guards (`HmacGuard`, `ErrorRateLimitGuard`, `JwtAuthGuard`) **no** se registran solos: el host debe usar `@UseGuards(...)` o `APP_GUARD` (a diferencia de los subscribers Symfony que se activan por YAML).
+- Persistencia: Nest **no** tiene `persistence.driver: both` como Symfony. Cada feature elige su driver por separado (`oauth.repository` y `audit.repository` son independientes: `sql` | `nosql` | `options` donde aplique).
+- Con `hmac.enabled: true` o `errorRateLimit.enabled: true`, el toolkit registra el guard correspondiente como `APP_GUARD` por defecto. Usa `autoRegisterGuard: false` para cablearlo manualmente con `@UseGuards` / `APP_GUARD` en el host.
 
 ## Paridad con Api-toolkit-bundle (Symfony)
 
@@ -102,9 +103,9 @@ Notas:
 | Emitir token client_credentials | `POST /oauth/token` | OK (ruta distinta a `/s/auth/client-token`) |
 | Validar Bearer JWT | `JwtAuthGuard` | OK |
 | HMAC | `HmacGuard` | OK (secreto global) |
-| IP ban / 404 rate limit | `ErrorRateLimitGuard` | OK (opt-in host) |
+| IP ban / 404 rate limit | `ErrorRateLimitGuard` | OK (auto `APP_GUARD` si enabled) |
 | HTTP JSON / headers / exceptions | `http/*` | OK |
-| Audit HTTP | `audit` SQL/NoSQL | Parcial (schema más simple) |
+| Audit HTTP | `audit` SQL/NoSQL | OK (limits, masked headers/fields, MAC, request id) |
 | Encryptor ATK1/ATK2 | `Encryptor` + `encryption` | OK |
 | OAuth client cifrado + roles/name | entity + repos | OK (también conserva scopes/users Nest) |
 | Messaging AMQP | — | Pendiente |
@@ -189,7 +190,13 @@ ApiToolkitModule.forRoot({
   audit: {
     enabled: true,
     repository: 'sql',
+    requestBodyLimit: 8192,
+    responseBodyLimit: 8192,
+    maskedHeaders: ['authorization', 'cookie', 'set-cookie', 'x-api-key'],
+    maskedFields: ['password', 'token', 'secret'],
+    // redactFields sigue soportado (legacy) y se fusiona con maskedFields
     redactFields: ['ssn', 'creditCard'],
+    macAddressHeader: 'X-Client-Mac-Address',
     config: {
       connection: process.env.DATABASE_URL,
       sqlType: 'postgres',
@@ -203,6 +210,10 @@ Notas:
 
 - `sqlType` soporta: `postgres`, `mysql`, `mariadb`, `sqlite`, `mssql`.
 - `synchronize` debe mantenerse en `false` en producción.
+- Bodies se redactan, se truncan al límite y (si hay `encryption.secret`) se cifran después.
+- Headers sensibles se persisten como `***`.
+- Se capturan `macAddress` (header configurable) y `requestId` (`X-Request-Id` o `X-Correlation-Id`).
+- Campos nuevos en el log: `requestHeaders`, `requestBodyTruncated`, `responseBodyTruncated`, `requestSize`, `responseSize`, `macAddress`, `requestId`.
 
 ## Configuración NoSQL (Mongoose)
 
@@ -404,9 +415,20 @@ export class OrdersController {
 
 ## Configuración HMAC
 
-El guard HMAC se exporta desde el toolkit, pero la app host decide dónde aplicarlo.
+Con `hmac.enabled: true`, `HmacGuard` se registra como `APP_GUARD` automáticamente. Para desactivar el auto-registro y cablearlo a mano:
 
-Configuración ejemplo:
+```ts
+hmac: {
+  enabled: true,
+  autoRegisterGuard: false,
+  secretKey: process.env.HMAC_SECRET ?? 'change-me',
+  protectedPathPrefix: '/api/secure',
+  timestampTolerance: 100,
+  requestAttributeName: 'authenticated_hmac',
+},
+```
+
+Configuración ejemplo (auto-registro por defecto):
 
 ```ts
 ApiToolkitModule.forRoot({
@@ -424,7 +446,7 @@ ApiToolkitModule.forRoot({
 });
 ```
 
-Aplicación por controlador o handler:
+Aplicación manual por controlador (solo si `autoRegisterGuard: false`):
 
 ```ts
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
@@ -468,7 +490,7 @@ Notas:
 
 ## Configuración Error Rate Limit
 
-El guard de rate limit también se exporta para que la app host decida si lo aplica a nivel global, de controlador o de ruta.
+Con `errorRateLimit.enabled: true`, `ErrorRateLimitGuard` se registra como `APP_GUARD` automáticamente. Usa `autoRegisterGuard: false` para cablearlo en el host.
 
 Configuración ejemplo:
 
@@ -489,7 +511,7 @@ ApiToolkitModule.forRoot({
 });
 ```
 
-Aplicación global en la app host:
+Aplicación manual global (solo si `autoRegisterGuard: false`):
 
 ```ts
 import { Module } from '@nestjs/common';
@@ -502,9 +524,9 @@ import { ApiToolkitModule, ErrorRateLimitGuard } from '@rafalejandrorh/nestjs-ap
       storage: { type: 'memory' },
       errorRateLimit: {
         enabled: true,
+        autoRegisterGuard: false,
         maxAttempts404: 5,
         banDurationMs: 60_000,
-        // Compat legacy (fallback):
         maxErrors: 5,
         windowMs: 60_000,
       },
@@ -655,6 +677,8 @@ La suite actual cubre:
 - módulo y drivers de storage (incluye rechazo de filesystem),
 - guards de seguridad (HMAC, error-rate-limit, JwtAuthGuard),
 - middleware y repositorios de auditoría (SQL + NoSQL),
+- normalizer de audit (limits, masked headers/fields),
+- auto-registro `APP_GUARD` de HMAC / error-rate-limit,
 - servicio OAuth (claims `sub_type` / `roles`),
 - middlewares y filtro HTTP transversal (unit + integración),
 - utilidades core.

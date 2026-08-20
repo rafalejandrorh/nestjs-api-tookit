@@ -6,65 +6,12 @@ import { TOOLKIT_AUDIT_REPOSITORY, TOOLKIT_ENCRYPTOR, TOOLKIT_OPTIONS } from '..
 import { EncryptionAad } from '../../crypto/encryption-aad';
 import type { Encryptor } from '../../crypto/encryptor';
 import { matchesToolkitRoute } from '../../core/utils/route-match.util';
-
-const SENSITIVE_AUDIT_KEYS = new Set([
-  'password',
-  'passwd',
-  'pwd',
-  'token',
-  'access_token',
-  'refresh_token',
-  'secret',
-  'client_secret',
-  'authorization',
-  'cookie',
-  'apikey',
-  'api_key',
-]);
-
-function getSensitiveAuditKeys(options: ToolkitOptions): Set<string> {
-  return new Set([
-    ...SENSITIVE_AUDIT_KEYS,
-    ...(options.audit?.redactFields?.map(field => field.toLowerCase()) ?? []),
-  ]);
-}
-
-function sanitizeRequestBody(body: unknown, sensitiveKeys: Set<string>): unknown {
-  if (Array.isArray(body)) {
-    return body.map(item => sanitizeRequestBody(item, sensitiveKeys));
-  }
-
-  if (!body || typeof body !== 'object') {
-    return body;
-  }
-
-  return Object.fromEntries(
-    Object.entries(body).map(([key, value]) => {
-      const normalizedKey = key.toLowerCase();
-      if (sensitiveKeys.has(normalizedKey)) {
-        return [key, '[REDACTED]'];
-      }
-
-      return [key, sanitizeRequestBody(value, sensitiveKeys)];
-    }),
-  );
-}
-
-function parseResponseBody(body: unknown): unknown {
-  if (body == null) {
-    return null;
-  }
-
-  if (typeof body !== 'string') {
-    return body;
-  }
-
-  try {
-    return JSON.parse(body);
-  } catch {
-    return body;
-  }
-}
+import {
+  normalizeBody,
+  normalizeHeaders,
+  readHeader,
+  resolveAuditNormalizerConfig,
+} from '../audit-normalizer';
 
 function maybeEncryptBody(
   value: unknown,
@@ -97,7 +44,24 @@ export class AuditMiddleware implements NestMiddleware {
     }
 
     const start = Date.now();
-    const sensitiveKeys = getSensitiveAuditKeys(this.options);
+    const normalizer = resolveAuditNormalizerConfig(this.options.audit);
+    const requestContentType = readHeader(req.headers as Record<string, unknown>, 'content-type');
+    const requestNormalized = normalizeBody(
+      requestContentType,
+      req.body,
+      normalizer.requestBodyLimit,
+      normalizer.maskedFields,
+    );
+    const requestHeaders = normalizeHeaders(
+      req.headers as Record<string, unknown>,
+      normalizer.maskedHeaders,
+    );
+    const macAddress =
+      readHeader(req.headers as Record<string, unknown>, normalizer.macAddressHeader) ?? null;
+    const requestId =
+      readHeader(req.headers as Record<string, unknown>, 'x-request-id') ??
+      readHeader(req.headers as Record<string, unknown>, 'x-correlation-id') ??
+      null;
 
     const originalSend = res.send;
     let responseBody: unknown;
@@ -109,24 +73,39 @@ export class AuditMiddleware implements NestMiddleware {
 
     res.on('finish', async () => {
       const durationMs = Date.now() - start;
-      const sanitizedRequestBody = sanitizeRequestBody(req.body, sensitiveKeys);
-      const parsedResponseBody = parseResponseBody(responseBody);
+      const responseContentType =
+        typeof res.getHeader === 'function'
+          ? String(res.getHeader('content-type') ?? '')
+          : undefined;
+      const responseNormalized = normalizeBody(
+        responseContentType || undefined,
+        responseBody,
+        normalizer.responseBodyLimit,
+        normalizer.maskedFields,
+      );
 
       const logPayload: AuditLogPayload = {
         method: req.method,
         url: req.originalUrl,
         ip: req.ip,
+        requestHeaders,
         requestBody: maybeEncryptBody(
-          sanitizedRequestBody,
+          requestNormalized.body,
           this.encryptor,
           EncryptionAad.AUDIT_REQUEST_BODY,
         ),
+        requestBodyTruncated: requestNormalized.truncated,
+        requestSize: requestNormalized.size,
         responseStatusCode: res.statusCode,
         responseBody: maybeEncryptBody(
-          parsedResponseBody,
+          responseNormalized.body,
           this.encryptor,
           EncryptionAad.AUDIT_RESPONSE_BODY,
         ),
+        responseBodyTruncated: responseNormalized.truncated,
+        responseSize: responseNormalized.size,
+        macAddress,
+        requestId,
         durationMs,
         timestamp: new Date(),
       };

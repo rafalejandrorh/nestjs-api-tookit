@@ -59,6 +59,8 @@ export interface ToolkitOptions {
   };
   hmac?: {
     enabled: boolean;
+    /** When true (default), registers HmacGuard as APP_GUARD. Set false to wire manually. */
+    autoRegisterGuard?: boolean;
     secretKey: string;
     protectedPathPrefix?: string;
     timestampTolerance?: number;
@@ -80,6 +82,8 @@ export interface ToolkitOptions {
   };
   errorRateLimit?: {
     enabled: boolean;
+    /** When true (default), registers ErrorRateLimitGuard as APP_GUARD. Set false to wire manually. */
+    autoRegisterGuard?: boolean;
     maxAttempts404?: number;
     banDurationMs?: number;
     /** @deprecated Prefer maxAttempts404 */
@@ -90,6 +94,17 @@ export interface ToolkitOptions {
   audit?: {
     enabled: boolean;
     repository: 'sql' | 'nosql';
+    /** Max bytes of sanitized request body before truncation. Default 8192. */
+    requestBodyLimit?: number;
+    /** Max bytes of sanitized response body before truncation. Default 8192. */
+    responseBodyLimit?: number;
+    /** Headers persisted as `***`. Defaults: authorization, cookie, set-cookie, x-api-key. */
+    maskedHeaders?: string[];
+    /** JSON/form field names to redact (merged with defaults + redactFields). */
+    maskedFields?: string[];
+    /** Header used for client MAC. Default X-Client-Mac-Address. */
+    macAddressHeader?: string;
+    /** @deprecated Prefer maskedFields. Merged into the sensitive-field set. */
     redactFields?: string[];
     config?: {
       connection: string | undefined;

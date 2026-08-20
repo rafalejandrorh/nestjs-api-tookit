@@ -1,6 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
 import type { ToolkitOptions } from '../../core/interfaces/toolkit-options.interface';
-import { Encryptor } from '../../crypto/encryptor';
 import type { AuditRepository } from '../interfaces/audit-repository.interface';
 import { AuditMiddleware } from './audit.middleware';
 
@@ -11,6 +10,12 @@ function createRequest(overrides: Partial<Request> = {}): Request {
     originalUrl: '/api/orders',
     ip: '127.0.0.1',
     body: { orderId: 42 },
+    headers: {
+      'content-type': 'application/json',
+      authorization: 'Bearer secret-token',
+      'x-client-mac-address': 'aa:bb:cc:dd:ee:ff',
+      'x-request-id': 'req-123',
+    },
     ...overrides,
   } as Request;
 }
@@ -22,6 +27,7 @@ function createResponse() {
     send: jest.fn(function (body: unknown) {
       return body;
     }),
+    getHeader: jest.fn(() => 'application/json'),
     on: jest.fn((event: string, listener: () => Promise<void> | void) => {
       listeners[event] = listener;
       return response;
@@ -94,6 +100,14 @@ describe('AuditMiddleware', () => {
         requestBody: { orderId: 42 },
         responseStatusCode: 201,
         responseBody: { ok: true },
+        macAddress: 'aa:bb:cc:dd:ee:ff',
+        requestId: 'req-123',
+        requestBodyTruncated: false,
+        responseBodyTruncated: false,
+        requestHeaders: expect.objectContaining({
+          authorization: ['***'],
+          'content-type': ['application/json'],
+        }),
       }),
     );
   });
@@ -191,11 +205,10 @@ describe('AuditMiddleware', () => {
     const middleware = new AuditMiddleware(options, auditRepo, null);
     const next = createNext();
     const { response, listeners } = createResponse();
-    const requestBody = {
-      'x-api-key': 'secret-key',
-    };
     const request = createRequest({
-      body: requestBody,
+      body: {
+        'x-api-key': 'secret-key',
+      },
     });
 
     middleware.use(request, response, next);
@@ -205,6 +218,38 @@ describe('AuditMiddleware', () => {
     expect(auditRepo.saveLog).toHaveBeenCalledWith(
       expect.objectContaining({
         requestBody: { 'x-api-key': '[REDACTED]' },
+      }),
+    );
+  });
+
+  it('truncates oversized request bodies and flags truncation', async () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'memory' },
+      audit: {
+        enabled: true,
+        repository: 'sql',
+        requestBodyLimit: 32,
+      },
+    };
+    const auditRepo: AuditRepository = { saveLog: jest.fn().mockResolvedValue(undefined) };
+    const middleware = new AuditMiddleware(options, auditRepo, null);
+    const next = createNext();
+    const { response, listeners } = createResponse();
+
+    middleware.use(
+      createRequest({
+        body: { note: 'x'.repeat(200) },
+      }),
+      response,
+      next,
+    );
+    response.send(JSON.stringify({ ok: true }));
+    await listeners.finish();
+
+    expect(auditRepo.saveLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestBodyTruncated: true,
+        requestSize: expect.any(Number),
       }),
     );
   });

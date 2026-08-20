@@ -1,4 +1,5 @@
-import { DynamicModule, MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
+import { DynamicModule, MiddlewareConsumer, Module, NestModule, Provider, RequestMethod } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import type { ToolkitOptions } from '../core/interfaces/toolkit-options.interface';
 import { TOOLKIT_OPTIONS } from '../core/tokens';
 import { loadOptionalPeer } from '../core/utils/optional-peer.util';
@@ -9,6 +10,10 @@ type JwtModuleLike = {
   register(config: Record<string, unknown>): DynamicModule;
 };
 
+function shouldAutoRegisterGuard(enabled: boolean | undefined, autoRegister?: boolean): boolean {
+  return enabled === true && autoRegister !== false;
+}
+
 @Module({
   providers: [HmacGuard, ErrorRateLimitGuard, ErrorRateLimitCounterMiddleware],
   exports: [HmacGuard, ErrorRateLimitGuard],
@@ -17,8 +22,17 @@ export class SecurityModule implements NestModule {
   static forRoot(options: ToolkitOptions): DynamicModule {
     const jwtSecret = options.security?.jwtSecret ?? options.oauth?.jwtSecret;
     const imports: DynamicModule[] = [];
-    const providers: unknown[] = [{ provide: TOOLKIT_OPTIONS, useValue: options }];
-    const exports: unknown[] = [TOOLKIT_OPTIONS, HmacGuard, ErrorRateLimitGuard];
+    const providers: Provider[] = [
+      { provide: TOOLKIT_OPTIONS, useValue: options },
+      HmacGuard,
+      ErrorRateLimitGuard,
+      ErrorRateLimitCounterMiddleware,
+    ];
+    const exports: Array<string | symbol | Provider | Function> = [
+      TOOLKIT_OPTIONS,
+      HmacGuard,
+      ErrorRateLimitGuard,
+    ];
 
     if (jwtSecret) {
       const { JwtModule } = loadOptionalPeer<{ JwtModule: JwtModuleLike }>(
@@ -41,11 +55,27 @@ export class SecurityModule implements NestModule {
       exports.push(JwtAuthGuard);
     }
 
+    if (shouldAutoRegisterGuard(options.hmac?.enabled, options.hmac?.autoRegisterGuard)) {
+      providers.push({
+        provide: APP_GUARD,
+        useClass: HmacGuard,
+      });
+    }
+
+    if (
+      shouldAutoRegisterGuard(options.errorRateLimit?.enabled, options.errorRateLimit?.autoRegisterGuard)
+    ) {
+      providers.push({
+        provide: APP_GUARD,
+        useClass: ErrorRateLimitGuard,
+      });
+    }
+
     return {
       module: SecurityModule,
       imports,
-      providers: providers as never[],
-      exports: exports as never[],
+      providers,
+      exports,
     };
   }
 
