@@ -8,19 +8,21 @@ import type { OAuthClientRepository } from '../interfaces/oauth-client-repositor
 type GenerateOAuthClientCommandOptions = {
   clientId?: string;
   clientSecret?: string;
+  name?: string;
+  roles?: string;
   scopes?: string;
   username?: string;
   password?: string;
 };
 
-function parseScopes(rawScopes?: string): string[] {
-  if (!rawScopes) {
+function parseList(raw?: string): string[] {
+  if (!raw) {
     return [];
   }
 
-  return rawScopes
+  return raw
     .split(',')
-    .map(scope => scope.trim())
+    .map(item => item.trim())
     .filter(Boolean);
 }
 
@@ -47,6 +49,16 @@ export class GenerateOAuthClientCommand extends CommandRunner {
     return clientSecret;
   }
 
+  @Option({ flags: '--name [name]' })
+  parseName(name: string): string {
+    return name;
+  }
+
+  @Option({ flags: '--roles [roles]' })
+  parseRoles(roles: string): string {
+    return roles;
+  }
+
   @Option({ flags: '--scopes [scopes]' })
   parseScopesOption(scopes: string): string {
     return scopes;
@@ -65,12 +77,15 @@ export class GenerateOAuthClientCommand extends CommandRunner {
   async run(_: string[], options: GenerateOAuthClientCommandOptions): Promise<void> {
     const clientId = options.clientId ?? randomBytes(12).toString('hex');
     const clientSecret = options.clientSecret ?? randomBytes(24).toString('hex');
-    const scopes = parseScopes(options.scopes);
+    const roles = parseList(options.roles);
+    const scopes = parseList(options.scopes);
     const users = this.buildUsers(options.username, options.password);
 
     const outputClient: OAuthToolkitClient = {
       clientId,
       clientSecret,
+      ...(options.name ? { name: options.name } : {}),
+      roles: roles.length > 0 ? roles : ['ROLE_API_CLIENT'],
       ...(scopes.length > 0 ? { scopes } : {}),
       ...(users.length > 0 ? { users } : {}),
     };

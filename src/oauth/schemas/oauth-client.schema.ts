@@ -13,6 +13,12 @@ export class OAuthClientModel {
   @Prop({ required: true })
   clientSecret!: string;
 
+  @Prop({ required: false })
+  name?: string;
+
+  @Prop({ type: [String], required: false })
+  roles?: string[];
+
   @Prop({ type: [String], required: false })
   scopes?: string[];
 

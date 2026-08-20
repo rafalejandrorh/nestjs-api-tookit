@@ -45,9 +45,16 @@ export class StorageModule {
 
             return new RedisStorageDriver(client);
           }
+          case 'filesystem':
+            throw new InternalServerErrorException(
+              'storage.type="filesystem" is not implemented. Use "memory" or "redis".',
+            );
           case 'memory':
-          default:
             return new MemoryStorageDriver();
+          default:
+            throw new InternalServerErrorException(
+              `Unsupported storage.type "${(options.storage as { type: string }).type}". Use "memory" or "redis".`,
+            );
         }
       },
       inject: (options.storage.type === 'redis' && redisServiceToken ? [redisServiceToken] : []) as unknown[],

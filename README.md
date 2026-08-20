@@ -2,7 +2,8 @@
 
 Toolkit modular para APIs en NestJS con enfoque en:
 
-- seguridad por HMAC y rate limiting de errores,
+- seguridad por HMAC, JWT Bearer (`JwtAuthGuard`) y rate limiting de errores,
+- cifrado AES-256-GCM compatible con el bundle PHP (`ATK1.` / `ATK2.`),
 - auditoría HTTP (SQL con TypeORM y NoSQL con Mongoose),
 - storage abstraído (Redis/Memory),
 - OAuth token endpoint (`client_credentials` y `password`).
@@ -37,11 +38,12 @@ Peers opcionales (marcados con `peerDependenciesMeta.optional: true`):
 | Feature | Peers opcionales |
 | --- | --- |
 | OAuth (`oauth.enabled: true`) | `@nestjs/jwt` |
+| JWT auth (`JwtAuthGuard` / `security.jwtSecret` o `oauth.jwtSecret`) | `@nestjs/jwt` |
 | OAuth comandos (`commands.oauth.enabled: true`) | `nest-commander` |
-| OAuth SQL (`oauth.repository: 'sql'`) | `@nestjs/typeorm`, `typeorm`, `pg` (si `sqlType: 'postgres'`) |
+| OAuth SQL (`oauth.repository: 'sql'`) | `@nestjs/typeorm`, `typeorm` (^0.3), `pg` (si `sqlType: 'postgres'`) |
 | OAuth NoSQL (`oauth.repository: 'nosql'`) | `@nestjs/mongoose`, `mongoose` |
-| Audit SQL (`audit.repository: 'sql'`) | `@nestjs/typeorm`, `typeorm`, `pg` (si `sqlType: 'postgres'`) |
-| Audit NoSQL (`audit.repository: 'nosql'`) | `@nestjs/mongoose`, `mongoose` |
+| Audit SQL (`audit.enabled` + `repository: 'sql'`) | `@nestjs/typeorm`, `typeorm` (^0.3), `pg` (si `sqlType: 'postgres'`) |
+| Audit NoSQL (`audit.enabled` + `repository: 'nosql'`) | `@nestjs/mongoose`, `mongoose` |
 | Storage Redis (`storage.type: 'redis'`) | `@liaoliaots/nestjs-redis`, `ioredis` |
 
 Validación runtime:
@@ -86,6 +88,98 @@ import { ApiToolkitModule } from '@rafalejandrorh/nestjs-api-toolkit';
 })
 export class AppModule {}
 ```
+
+Notas:
+
+- `storage.type` soporta `memory` y `redis`. `filesystem` está tipado pero **no implementado** y lanza error explícito al boot.
+- `audit` es opcional: solo se carga si `audit.enabled: true` (con `repository: 'sql' | 'nosql'`).
+- Los guards (`HmacGuard`, `ErrorRateLimitGuard`, `JwtAuthGuard`) **no** se registran solos: el host debe usar `@UseGuards(...)` o `APP_GUARD` (a diferencia de los subscribers Symfony que se activan por YAML).
+
+## Paridad con Api-toolkit-bundle (Symfony)
+
+| Capacidad PHP | Nest | Estado |
+| --- | --- | --- |
+| Emitir token client_credentials | `POST /oauth/token` | OK (ruta distinta a `/s/auth/client-token`) |
+| Validar Bearer JWT | `JwtAuthGuard` | OK |
+| HMAC | `HmacGuard` | OK (secreto global) |
+| IP ban / 404 rate limit | `ErrorRateLimitGuard` | OK (opt-in host) |
+| HTTP JSON / headers / exceptions | `http/*` | OK |
+| Audit HTTP | `audit` SQL/NoSQL | Parcial (schema más simple) |
+| Encryptor ATK1/ATK2 | `Encryptor` + `encryption` | OK |
+| OAuth client cifrado + roles/name | entity + repos | OK (también conserva scopes/users Nest) |
+| Messaging AMQP | — | Pendiente |
+| SOAP / BaseService helpers | — | Pendiente |
+| `auth_driver: league` | — | Pendiente / fuera de alcance |
+
+## Cifrado
+
+Compatible con el Encryptor PHP (`ATK1.` IV aleatorio, `ATK2.` determinístico, legacy sin prefijo):
+
+```ts
+ApiToolkitModule.forRoot({
+  storage: { type: 'memory' },
+  encryption: {
+    secret: process.env.API_TOOLKIT_ENCRYPTION_KEY ?? 'change-me',
+    legacySecret: process.env.APP_SECRET,
+  },
+  oauth: {
+    enabled: true,
+    repository: 'sql',
+    jwtSecret: process.env.JWT_SECRET,
+    config: {
+      connection: process.env.DATABASE_URL,
+      sqlType: 'postgres',
+    },
+  },
+});
+```
+
+Cuando `encryption.secret` está definido:
+
+- OAuth SQL/NoSQL cifra `clientId` (determinístico) y `clientSecret` (aleatorio) al persistir.
+- Audit cifra request/response body con AAD `audit.request_body` / `audit.response_body`.
+- Sin `encryption`, el comportamiento sigue siendo plaintext (compat con installs anteriores).
+
+## JwtAuthGuard
+
+Protege rutas con el Bearer emitido por el toolkit. Requiere `oauth.jwtSecret` o `security.jwtSecret` (y peer `@nestjs/jwt`).
+
+```ts
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import {
+  ApiToolkitModule,
+  CurrentUser,
+  JwtAuthGuard,
+  type ToolkitAuthUser,
+} from '@rafalejandrorh/nestjs-api-toolkit';
+
+@Module({
+  imports: [
+    ApiToolkitModule.forRoot({
+      storage: { type: 'memory' },
+      oauth: {
+        enabled: true,
+        jwtSecret: process.env.JWT_SECRET,
+        clients: [{ clientId: 'demo', clientSecret: 'secret', roles: ['ROLE_API_CLIENT'] }],
+      },
+    }),
+  ],
+  providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],
+})
+export class AppModule {}
+
+@Controller('api/me')
+export class MeController {
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  me(@CurrentUser() user: ToolkitAuthUser) {
+    return user;
+  }
+}
+```
+
+Claims emitidos en `client_credentials`: `sub`, `sub_type: 'client'`, `client_id`, `roles`, `scope`.
 
 ## Configuración SQL (TypeORM)
 
@@ -258,6 +352,56 @@ Notas:
 - Si `http.exception.enabled` es `false`, Nest usa su manejador de excepciones por defecto.
 - Si una ruta no coincide con `globalMatch`, este bloque HTTP no se aplica.
 
+## Guards: wiring en el host
+
+A diferencia del bundle Symfony (subscribers activos por config), en Nest los guards se exportan y el host decide dónde aplicarlos:
+
+```ts
+import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import {
+  ApiToolkitModule,
+  ErrorRateLimitGuard,
+  HmacGuard,
+  JwtAuthGuard,
+} from '@rafalejandrorh/nestjs-api-toolkit';
+
+@Module({
+  imports: [
+    ApiToolkitModule.forRoot({
+      globalMatch: { include: ['^/api'] },
+      storage: { type: 'memory' },
+      oauth: { enabled: true, jwtSecret: process.env.JWT_SECRET },
+      hmac: { enabled: true, secretKey: process.env.HMAC_SECRET ?? 'change-me' },
+      errorRateLimit: { enabled: true, maxAttempts404: 5, banDurationMs: 60_000 },
+    }),
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: ErrorRateLimitGuard },
+  ],
+})
+export class AppModule {}
+```
+
+Por controlador:
+
+```ts
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { CurrentUser, HmacGuard, JwtAuthGuard } from '@rafalejandrorh/nestjs-api-toolkit';
+
+@Controller('api/orders')
+@UseGuards(JwtAuthGuard, HmacGuard)
+export class OrdersController {
+  @Get()
+  list(@CurrentUser() user: { clientId: string; roles: string[] }) {
+    return { clientId: user.clientId, roles: user.roles };
+  }
+}
+```
+
+`JwtAuthGuard` requiere `oauth.jwtSecret` o `security.jwtSecret`. Respeta `globalMatch` (fuera del match no exige token).
+
 ## Configuración HMAC
 
 El guard HMAC se exporta desde el toolkit, pero la app host decide dónde aplicarlo.
@@ -418,6 +562,8 @@ Flags de `toolkit:oauth-client:generate`:
 
 - `--client-id [clientId]`
 - `--client-secret [clientSecret]`
+- `--name [name]`
+- `--roles [role1,role2]` (default `ROLE_API_CLIENT`)
 - `--scopes [scope1,scope2]`
 - `--username [username]`
 - `--password [password]`
@@ -504,9 +650,11 @@ yarn lint
 
 La suite actual cubre:
 
-- módulo y drivers de storage,
-- guards de seguridad,
+- `ApiToolkitModule.forRoot` sin audit (boot mínimo),
+- Encryptor ATK1/ATK2 (+ legacy),
+- módulo y drivers de storage (incluye rechazo de filesystem),
+- guards de seguridad (HMAC, error-rate-limit, JwtAuthGuard),
 - middleware y repositorios de auditoría (SQL + NoSQL),
-- servicio OAuth,
+- servicio OAuth (claims `sub_type` / `roles`),
 - middlewares y filtro HTTP transversal (unit + integración),
 - utilidades core.

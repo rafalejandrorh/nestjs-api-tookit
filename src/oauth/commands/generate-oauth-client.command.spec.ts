@@ -30,6 +30,7 @@ describe('GenerateOAuthClientCommand', () => {
         {
           clientId: 'client-a',
           clientSecret: 'secret-a',
+          roles: ['ROLE_API_CLIENT'],
           scopes: ['read', 'write'],
           users: [{ username: 'alice', password: 'alice-password' }],
         },
@@ -70,6 +71,7 @@ describe('GenerateOAuthClientCommand', () => {
     expect(repository.saveClient).toHaveBeenCalledWith({
       clientId: 'client-sql',
       clientSecret: 'secret-sql',
+      roles: ['ROLE_API_CLIENT'],
     });
     expect(writeSpy).toHaveBeenCalledWith('Persisted in sql repository\n');
   });

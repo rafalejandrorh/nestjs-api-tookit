@@ -9,6 +9,8 @@ export interface OAuthToolkitUser {
 export interface OAuthToolkitClient {
   clientId: string;
   clientSecret: string;
+  name?: string;
+  roles?: string[];
   scopes?: string[];
   users?: OAuthToolkitUser[];
 }
@@ -36,6 +38,7 @@ export interface ToolkitOptions {
     jwtIssuer?: string;
     jwtAlgorithm?: string;
     accessTokenExpiresIn?: number | string;
+    defaultRoles?: string[];
     clients?: OAuthToolkitClient[];
     config?: {
       connection?: string;
@@ -43,6 +46,16 @@ export interface ToolkitOptions {
       sqlType?: 'postgres' | 'mysql' | 'mariadb' | 'mssql' | undefined;
       synchronize?: boolean;
     };
+  };
+  security?: {
+    jwtSecret?: string;
+    jwtIssuer?: string;
+    jwtAlgorithm?: string;
+    defaultRoles?: string[];
+  };
+  encryption?: {
+    secret: string;
+    legacySecret?: string;
   };
   hmac?: {
     enabled: boolean;
@@ -69,8 +82,10 @@ export interface ToolkitOptions {
     enabled: boolean;
     maxAttempts404?: number;
     banDurationMs?: number;
-    maxErrors: number;
-    windowMs: number;
+    /** @deprecated Prefer maxAttempts404 */
+    maxErrors?: number;
+    /** @deprecated Prefer banDurationMs */
+    windowMs?: number;
   };
   audit?: {
     enabled: boolean;

@@ -14,7 +14,7 @@ function resolveBanDurationMs(options: ToolkitOptions['errorRateLimit']): number
     return 60000;
   }
 
-  return options.banDurationMs ?? options.windowMs;
+  return options.banDurationMs ?? options.windowMs ?? 60000;
 }
 
 @Injectable()

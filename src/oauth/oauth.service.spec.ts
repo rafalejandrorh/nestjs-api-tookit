@@ -54,6 +54,8 @@ describe('OAuthService', () => {
       expect(jwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
           client_id: 'client-a',
+          sub_type: 'client',
+          roles: ['ROLE_API_CLIENT'],
           scope: 'read',
         }),
       );
@@ -82,6 +84,8 @@ describe('OAuthService', () => {
         expect.objectContaining({
           client_id: 'client-a',
           username: 'alice',
+          sub_type: 'user',
+          roles: ['ROLE_API_CLIENT'],
         }),
       );
       expect(response.access_token).toBe('signed-token');

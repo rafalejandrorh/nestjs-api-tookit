@@ -8,12 +8,10 @@ export * from './cache';
 export * from './security';
 export * from './oauth';
 export * from './http';
+export * from './crypto';
 
 // Exportar las interfaces para que la app tenga tipado fuerte al configurar
 export * from './core/interfaces/toolkit-options.interface';
 
 // Exportar tokens para integraciones avanzadas por DI
 export * from './core/tokens';
-
-// Exportar utilidades o decoradores personalizados si los tienes
-// export * from './decorators/current-user.decorator';

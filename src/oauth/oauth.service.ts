@@ -60,6 +60,7 @@ export class OAuthService {
     const client = await this.findClient(request.client_id, request.client_secret);
     const scope = this.resolveScope(client, request.scope);
     const expiresIn = this.options.oauth?.accessTokenExpiresIn ?? '1h';
+    const roles = this.resolveRoles(client);
 
     if (grantType === 'password') {
       if (!request.username || !request.password) {
@@ -69,8 +70,10 @@ export class OAuthService {
       const user = this.findUser(client, request.username, request.password);
       const accessToken = this.jwtService.sign({
         sub: `${client.clientId}:${user.username}`,
+        sub_type: 'user',
         client_id: client.clientId,
         username: user.username,
+        roles,
         scope,
       });
 
@@ -84,7 +87,9 @@ export class OAuthService {
 
     const accessToken = this.jwtService.sign({
       sub: client.clientId,
+      sub_type: 'client',
       client_id: client.clientId,
+      roles,
       scope,
     });
 
@@ -113,6 +118,17 @@ export class OAuthService {
     }
 
     return user;
+  }
+
+  private resolveRoles(client: OAuthToolkitClient): string[] {
+    if (client.roles && client.roles.length > 0) {
+      return client.roles;
+    }
+
+    return (
+      this.options.oauth?.defaultRoles ??
+      this.options.security?.defaultRoles ?? ['ROLE_API_CLIENT']
+    );
   }
 
   private resolveScope(client: OAuthToolkitClient, requestedScope?: string): string | undefined {

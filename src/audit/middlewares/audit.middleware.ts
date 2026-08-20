@@ -1,8 +1,10 @@
-import { Injectable, NestMiddleware, Inject } from '@nestjs/common';
+import { Injectable, NestMiddleware, Inject, Optional } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import type { ToolkitOptions } from '../../core/interfaces/toolkit-options.interface';
 import type { AuditLogPayload, AuditRepository } from '../interfaces/audit-repository.interface';
-import { TOOLKIT_AUDIT_REPOSITORY, TOOLKIT_OPTIONS } from '../../core/tokens';
+import { TOOLKIT_AUDIT_REPOSITORY, TOOLKIT_ENCRYPTOR, TOOLKIT_OPTIONS } from '../../core/tokens';
+import { EncryptionAad } from '../../crypto/encryption-aad';
+import type { Encryptor } from '../../crypto/encryptor';
 import { matchesToolkitRoute } from '../../core/utils/route-match.util';
 
 const SENSITIVE_AUDIT_KEYS = new Set([
@@ -64,11 +66,25 @@ function parseResponseBody(body: unknown): unknown {
   }
 }
 
+function maybeEncryptBody(
+  value: unknown,
+  encryptor: Encryptor | null | undefined,
+  aad: string,
+): unknown {
+  if (!encryptor || value == null) {
+    return value;
+  }
+
+  const serialized = typeof value === 'string' ? value : JSON.stringify(value);
+  return encryptor.encrypt(serialized, aad);
+}
+
 @Injectable()
 export class AuditMiddleware implements NestMiddleware {
   constructor(
     @Inject(TOOLKIT_OPTIONS) private options: ToolkitOptions,
     @Inject(TOOLKIT_AUDIT_REPOSITORY) private auditRepo: AuditRepository,
+    @Optional() @Inject(TOOLKIT_ENCRYPTOR) private encryptor: Encryptor | null,
   ) {}
 
   use(req: Request, res: Response, next: NextFunction) {
@@ -83,10 +99,8 @@ export class AuditMiddleware implements NestMiddleware {
     const start = Date.now();
     const sensitiveKeys = getSensitiveAuditKeys(this.options);
 
-    // Interceptar el body de la respuesta es truculento en Express/Nest.
-    // Sobrescribimos temporalmente res.send para capturar el payload.
     const originalSend = res.send;
-    let responseBody: any;
+    let responseBody: unknown;
 
     res.send = function (body) {
       responseBody = body;
@@ -95,19 +109,28 @@ export class AuditMiddleware implements NestMiddleware {
 
     res.on('finish', async () => {
       const durationMs = Date.now() - start;
+      const sanitizedRequestBody = sanitizeRequestBody(req.body, sensitiveKeys);
+      const parsedResponseBody = parseResponseBody(responseBody);
 
       const logPayload: AuditLogPayload = {
         method: req.method,
         url: req.originalUrl,
         ip: req.ip,
-        requestBody: sanitizeRequestBody(req.body, sensitiveKeys),
+        requestBody: maybeEncryptBody(
+          sanitizedRequestBody,
+          this.encryptor,
+          EncryptionAad.AUDIT_REQUEST_BODY,
+        ),
         responseStatusCode: res.statusCode,
-        responseBody: parseResponseBody(responseBody),
+        responseBody: maybeEncryptBody(
+          parsedResponseBody,
+          this.encryptor,
+          EncryptionAad.AUDIT_RESPONSE_BODY,
+        ),
         durationMs,
         timestamp: new Date(),
       };
 
-      // Disparamos el guardado de forma asíncrona para no bloquear el hilo
       this.auditRepo.saveLog(logPayload).catch(err => {
         console.error('Error saving audit log', err);
       });

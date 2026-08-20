@@ -104,4 +104,17 @@ describe('StorageModule', () => {
 
     expect(() => storageProvider.useFactory(redisService)).toThrow(InternalServerErrorException);
   });
+
+  it('throws when filesystem storage is requested', () => {
+    const options: ToolkitOptions = {
+      storage: { type: 'filesystem' },
+    };
+
+    const dynamicModule = StorageModule.forRoot(options);
+    const storageProvider = getStorageProvider(dynamicModule);
+
+    expect(() => storageProvider.useFactory()).toThrow(InternalServerErrorException);
+    expect(() => storageProvider.useFactory()).toThrow(/filesystem/);
+  });
+
 });

@@ -10,8 +10,14 @@ export class OAuthClientEntity {
   @Column({ type: 'varchar', length: 255 })
   clientId!: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 512 })
   clientSecret!: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  name!: string | null;
+
+  @Column({ type: 'simple-json', nullable: true })
+  roles!: string[] | null;
 
   @Column({ type: 'simple-json', nullable: true })
   scopes!: string[] | null;

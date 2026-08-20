@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import type { ToolkitOptions } from '../../core/interfaces/toolkit-options.interface';
+import { Encryptor } from '../../crypto/encryptor';
 import type { AuditRepository } from '../interfaces/audit-repository.interface';
 import { AuditMiddleware } from './audit.middleware';
 
@@ -45,7 +46,7 @@ describe('AuditMiddleware', () => {
       audit: { enabled: false, repository: 'sql' },
     };
     const auditRepo: AuditRepository = { saveLog: jest.fn() };
-    const middleware = new AuditMiddleware(options, auditRepo);
+    const middleware = new AuditMiddleware(options, auditRepo, null);
     const next = createNext();
 
     middleware.use(createRequest(), createResponse().response, next);
@@ -61,7 +62,7 @@ describe('AuditMiddleware', () => {
       audit: { enabled: true, repository: 'sql' },
     };
     const auditRepo: AuditRepository = { saveLog: jest.fn() };
-    const middleware = new AuditMiddleware(options, auditRepo);
+    const middleware = new AuditMiddleware(options, auditRepo, null);
     const next = createNext();
 
     middleware.use(createRequest({ path: '/health', originalUrl: '/health' }), createResponse().response, next);
@@ -76,7 +77,7 @@ describe('AuditMiddleware', () => {
       audit: { enabled: true, repository: 'sql' },
     };
     const auditRepo: AuditRepository = { saveLog: jest.fn().mockResolvedValue(undefined) };
-    const middleware = new AuditMiddleware(options, auditRepo);
+    const middleware = new AuditMiddleware(options, auditRepo, null);
     const next = createNext();
     const { response, listeners } = createResponse();
 
@@ -103,7 +104,7 @@ describe('AuditMiddleware', () => {
       audit: { enabled: true, repository: 'sql' },
     };
     const auditRepo: AuditRepository = { saveLog: jest.fn().mockResolvedValue(undefined) };
-    const middleware = new AuditMiddleware(options, auditRepo);
+    const middleware = new AuditMiddleware(options, auditRepo, null);
     const next = createNext();
     const { response, listeners } = createResponse();
     const request = createRequest({
@@ -145,7 +146,7 @@ describe('AuditMiddleware', () => {
       },
     };
     const auditRepo: AuditRepository = { saveLog: jest.fn().mockResolvedValue(undefined) };
-    const middleware = new AuditMiddleware(options, auditRepo);
+    const middleware = new AuditMiddleware(options, auditRepo, null);
     const next = createNext();
     const { response, listeners } = createResponse();
     const request = createRequest({
@@ -187,7 +188,7 @@ describe('AuditMiddleware', () => {
       },
     };
     const auditRepo: AuditRepository = { saveLog: jest.fn().mockResolvedValue(undefined) };
-    const middleware = new AuditMiddleware(options, auditRepo);
+    const middleware = new AuditMiddleware(options, auditRepo, null);
     const next = createNext();
     const { response, listeners } = createResponse();
     const requestBody = {
@@ -214,7 +215,7 @@ describe('AuditMiddleware', () => {
       audit: { enabled: true, repository: 'sql' },
     };
     const auditRepo: AuditRepository = { saveLog: jest.fn().mockRejectedValue(new Error('db down')) };
-    const middleware = new AuditMiddleware(options, auditRepo);
+    const middleware = new AuditMiddleware(options, auditRepo, null);
     const next = createNext();
     const { response, listeners } = createResponse();
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -234,7 +235,7 @@ describe('AuditMiddleware', () => {
       audit: { enabled: true, repository: 'sql' },
     };
     const auditRepo: AuditRepository = { saveLog: jest.fn().mockResolvedValue(undefined) };
-    const middleware = new AuditMiddleware(options, auditRepo);
+    const middleware = new AuditMiddleware(options, auditRepo, null);
     const next = createNext();
     const { response, listeners } = createResponse();
 
@@ -255,7 +256,7 @@ describe('AuditMiddleware', () => {
       audit: { enabled: true, repository: 'sql' },
     };
     const auditRepo: AuditRepository = { saveLog: jest.fn().mockResolvedValue(undefined) };
-    const middleware = new AuditMiddleware(options, auditRepo);
+    const middleware = new AuditMiddleware(options, auditRepo, null);
     const next = createNext();
     const { response, listeners } = createResponse();
 
