@@ -6,6 +6,8 @@ function createStorageDriver(): jest.Mocked<StorageDriver> {
     get: jest.fn(),
     set: jest.fn(),
     increment: jest.fn(),
+    delete: jest.fn(),
+    clear: jest.fn(),
   };
 }
 
@@ -92,5 +94,16 @@ describe('CacheService', () => {
     await expect(service.remember('orders', 30, fallback)).resolves.toEqual({ orderId: 42 });
     expect(fallback).toHaveBeenCalledTimes(1);
     expect(storage.set).toHaveBeenCalledWith('orders', JSON.stringify({ orderId: 42 }), 30);
+  });
+
+  it('deletes and clears through the storage driver', async () => {
+    const storage = createStorageDriver();
+    const service = new CacheService(storage);
+
+    await service.delete('orders');
+    await service.clear();
+
+    expect(storage.delete).toHaveBeenCalledWith('orders');
+    expect(storage.clear).toHaveBeenCalledTimes(1);
   });
 });

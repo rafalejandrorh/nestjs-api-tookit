@@ -17,6 +17,8 @@ function createStorageDriver(getValue: string | null): StorageDriver {
     get: jest.fn().mockResolvedValue(getValue),
     set: jest.fn(),
     increment: jest.fn(),
+    delete: jest.fn(),
+    clear: jest.fn(),
   };
 }
 
@@ -27,6 +29,8 @@ function createStorageDriverWithMap(values: Record<string, string | null>): Stor
       values[key] = value;
     }),
     increment: jest.fn(),
+    delete: jest.fn(),
+    clear: jest.fn(),
   };
 }
 

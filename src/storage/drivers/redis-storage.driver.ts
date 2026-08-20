@@ -9,6 +9,8 @@ type RedisMulti = {
 type RedisLikeClient = {
   get(key: string): Promise<string | null>;
   set(key: string, value: string, ...args: unknown[]): Promise<unknown>;
+  del(...keys: string[]): Promise<unknown>;
+  keys(pattern: string): Promise<string[]>;
   multi(): RedisMulti;
 };
 
@@ -35,5 +37,16 @@ export class RedisStorageDriver implements StorageDriver {
     }
     const results = await multi.exec();
     return results ? (results[0][1] as number) : 1;
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.client.del(key);
+  }
+
+  async clear(): Promise<void> {
+    const keys = await this.client.keys('*');
+    if (keys.length > 0) {
+      await this.client.del(...keys);
+    }
   }
 }

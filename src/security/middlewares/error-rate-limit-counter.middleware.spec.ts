@@ -29,6 +29,8 @@ function createStorage(): jest.Mocked<StorageDriver> {
     get: jest.fn(),
     set: jest.fn(),
     increment: jest.fn().mockResolvedValue(1),
+    delete: jest.fn(),
+    clear: jest.fn(),
   };
 }
 

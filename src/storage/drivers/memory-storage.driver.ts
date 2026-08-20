@@ -24,4 +24,12 @@ export class MemoryStorageDriver implements StorageDriver {
     await this.set(key, newValue.toString(), ttlSeconds);
     return newValue;
   }
+
+  async delete(key: string): Promise<void> {
+    this.cache.delete(key);
+  }
+
+  async clear(): Promise<void> {
+    this.cache.clear();
+  }
 }

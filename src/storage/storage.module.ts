@@ -2,7 +2,7 @@ import { DynamicModule, InternalServerErrorException, Module } from '@nestjs/com
 import type { ToolkitOptions } from '../core/interfaces/toolkit-options.interface';
 import { TOOLKIT_STORAGE_DRIVER } from '../core/tokens';
 import { loadOptionalPeer } from '../core/utils/optional-peer.util';
-import { RedisStorageDriver, MemoryStorageDriver } from './drivers';
+import { RedisStorageDriver, MemoryStorageDriver, FilesystemStorageDriver } from './drivers';
 
 @Module({})
 export class StorageModule {
@@ -45,15 +45,19 @@ export class StorageModule {
 
             return new RedisStorageDriver(client);
           }
-          case 'filesystem':
-            throw new InternalServerErrorException(
-              'storage.type="filesystem" is not implemented. Use "memory" or "redis".',
-            );
+          case 'filesystem': {
+            const directoryValue = options.storage.config?.directory;
+            const directory =
+              typeof directoryValue === 'string' && directoryValue.length > 0
+                ? directoryValue
+                : FilesystemStorageDriver.defaultDirectory();
+            return new FilesystemStorageDriver(directory);
+          }
           case 'memory':
             return new MemoryStorageDriver();
           default:
             throw new InternalServerErrorException(
-              `Unsupported storage.type "${(options.storage as { type: string }).type}". Use "memory" or "redis".`,
+              `Unsupported storage.type "${(options.storage as { type: string }).type}". Use "memory", "redis", or "filesystem".`,
             );
         }
       },

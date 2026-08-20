@@ -20,6 +20,14 @@ function createStorageDriver(state: StorageState) {
       state[key] = `${next}`;
       return next;
     }),
+    delete: jest.fn(async (key: string) => {
+      delete state[key];
+    }),
+    clear: jest.fn(async () => {
+      for (const key of Object.keys(state)) {
+        delete state[key];
+      }
+    }),
   };
 }
 

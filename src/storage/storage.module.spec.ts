@@ -4,11 +4,12 @@ import type { ToolkitOptions } from '../core/interfaces/toolkit-options.interfac
 import { TOOLKIT_STORAGE_DRIVER } from '../core/tokens';
 import { MemoryStorageDriver } from './drivers/memory-storage.driver';
 import { RedisStorageDriver } from './drivers/redis-storage.driver';
+import { FilesystemStorageDriver } from './drivers/filesystem-storage.driver';
 import { StorageModule } from './storage.module';
 
 type StorageProvider = {
   provide: string;
-  useFactory: (redisService?: RedisService) => MemoryStorageDriver | RedisStorageDriver;
+  useFactory: (redisService?: RedisService) => MemoryStorageDriver | RedisStorageDriver | FilesystemStorageDriver;
   inject: unknown[];
 };
 
@@ -105,16 +106,17 @@ describe('StorageModule', () => {
     expect(() => storageProvider.useFactory(redisService)).toThrow(InternalServerErrorException);
   });
 
-  it('throws when filesystem storage is requested', () => {
+  it('builds a filesystem storage provider', () => {
     const options: ToolkitOptions = {
-      storage: { type: 'filesystem' },
+      storage: { type: 'filesystem', config: { directory: '/tmp/toolkit-cache' } },
     };
 
     const dynamicModule = StorageModule.forRoot(options);
     const storageProvider = getStorageProvider(dynamicModule);
+    const driver = storageProvider.useFactory();
 
-    expect(() => storageProvider.useFactory()).toThrow(InternalServerErrorException);
-    expect(() => storageProvider.useFactory()).toThrow(/filesystem/);
+    expect(driver).toBeInstanceOf(FilesystemStorageDriver);
   });
+
 
 });

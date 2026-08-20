@@ -5,7 +5,7 @@ Toolkit modular para APIs en NestJS con enfoque en:
 - seguridad por HMAC, JWT Bearer (`JwtAuthGuard`) y rate limiting de errores,
 - cifrado AES-256-GCM compatible con el bundle PHP (`ATK1.` / `ATK2.`),
 - auditoría HTTP (SQL con TypeORM y NoSQL con Mongoose),
-- storage abstraído (Redis/Memory),
+- storage abstraído (Redis / Memory / Filesystem),
 - OAuth token endpoint (`client_credentials` y `password`).
 
 ## Instalación
@@ -91,7 +91,7 @@ export class AppModule {}
 
 Notas:
 
-- `storage.type` soporta `memory` y `redis`. `filesystem` está tipado pero **no implementado** y lanza error explícito al boot.
+- `storage.type` soporta `memory`, `redis` y `filesystem`. Filesystem usa `storage.config.directory` (default: tmpdir).
 - `audit` es opcional: solo se carga si `audit.enabled: true` (con `repository: 'sql' | 'nosql'`).
 - Persistencia: Nest **no** tiene `persistence.driver: both` como Symfony. Cada feature elige su driver por separado (`oauth.repository` y `audit.repository` son independientes: `sql` | `nosql` | `options` donde aplique).
 - Con `hmac.enabled: true` o `errorRateLimit.enabled: true`, el toolkit registra el guard correspondiente como `APP_GUARD` por defecto. Usa `autoRegisterGuard: false` para cablearlo manualmente con `@UseGuards` / `APP_GUARD` en el host.
@@ -108,9 +108,9 @@ Notas:
 | Audit HTTP | `audit` SQL/NoSQL | OK (limits, masked headers/fields, MAC, request id) |
 | Encryptor ATK1/ATK2 | `Encryptor` + `encryption` | OK |
 | OAuth client cifrado + roles/name | entity + repos | OK (también conserva scopes/users Nest) |
-| Messaging AMQP | — | Pendiente |
-| SOAP / BaseService helpers | — | Pendiente |
-| `auth_driver: league` | — | Pendiente / fuera de alcance |
+| Messaging AMQP | — | Fuera de alcance por ahora |
+| SOAP / BaseService / RepositoryService | — | Fuera de alcance (PHP-only) |
+| `auth_driver: league` | — | Fuera de alcance |
 
 ## Cifrado
 
@@ -182,7 +182,20 @@ export class MeController {
 
 Claims emitidos en `client_credentials`: `sub`, `sub_type: 'client'`, `client_id`, `roles`, `scope`.
 
+`@AuthenticatedClient()` resuelve el principal autenticado desde `authenticated_oauth_client`, `authenticated_hmac`, o el user JWT (`toolkitUser` / `request.user`). Lanza `UnauthorizedException` si no hay cliente.
+
+## Patrones de extensión en el host
+
+A diferencia de Symfony (`BaseController` / `BaseService` / traits), Nest usa composición:
+
+- Guards: `JwtAuthGuard`, `HmacGuard`, `ErrorRateLimitGuard`
+- Decorators: `CurrentUser`, `AuthenticatedClient`
+- Servicios: `Encryptor`, `CacheService` (`get` / `set` / `remember` / `delete` / `clear`)
+
+No se portan messaging AMQP, SOAP adapters, `RepositoryService`, `TranslatorTrait` ni herencia `Base*`. Esas piezas quedan en el bundle PHP.
+
 ## Configuración SQL (TypeORM)
+
 
 ```ts
 ApiToolkitModule.forRoot({
@@ -674,8 +687,10 @@ La suite actual cubre:
 
 - `ApiToolkitModule.forRoot` sin audit (boot mínimo),
 - Encryptor ATK1/ATK2 (+ legacy),
-- módulo y drivers de storage (incluye rechazo de filesystem),
+- módulo y drivers de storage (memory, redis, filesystem + delete/clear),
+- CacheService (get/set/remember/delete/clear),
 - guards de seguridad (HMAC, error-rate-limit, JwtAuthGuard),
+- `@AuthenticatedClient`,
 - middleware y repositorios de auditoría (SQL + NoSQL),
 - normalizer de audit (limits, masked headers/fields),
 - auto-registro `APP_GUARD` de HMAC / error-rate-limit,

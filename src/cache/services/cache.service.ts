@@ -31,4 +31,12 @@ export class CacheService {
     await this.set(key, freshData, ttlSeconds);
     return freshData;
   }
+
+  async delete(key: string): Promise<void> {
+    await this.storage.delete(key);
+  }
+
+  async clear(): Promise<void> {
+    await this.storage.clear();
+  }
 }

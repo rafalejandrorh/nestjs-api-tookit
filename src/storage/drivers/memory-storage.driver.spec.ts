@@ -44,4 +44,17 @@ describe('MemoryStorageDriver', () => {
     await expect(driver.increment('orders')).resolves.toBe(3);
     await expect(driver.get('orders')).resolves.toBe('3');
   });
+
+  it('deletes keys and clears the store', async () => {
+    const driver = new MemoryStorageDriver();
+    await driver.set('orders', 'value');
+    await driver.set('users', 'value');
+
+    await driver.delete('orders');
+    await expect(driver.get('orders')).resolves.toBeNull();
+    await expect(driver.get('users')).resolves.toBe('value');
+
+    await driver.clear();
+    await expect(driver.get('users')).resolves.toBeNull();
+  });
 });
